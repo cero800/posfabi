@@ -66,8 +66,19 @@ export class AppError extends Error {
 export const validacion = (mensaje: string): AppError =>
   new AppError(CODIGO_ERROR.validacion, mensaje);
 
-export const noEncontrado = (entidad: string): AppError =>
-  new AppError(CODIGO_ERROR.no_encontrado, `${entidad} no encontrado`);
+/**
+ * Error para un id que no existe, con el nombre de lo que se buscó.
+ *
+ * El género es un parámetro porque "Venta no encontrado" se lee mal y este
+ * mensaje lo ve el cajero en la pantalla, no solo el registro. Masculino por
+ * omisión, que es lo que son casi todas las entidades del catálogo; el
+ * femenino se pide explícito para que no quede un artículo mal concordado.
+ */
+export const noEncontrado = (entidad: string, genero: 'm' | 'f' = 'm'): AppError =>
+  new AppError(
+    CODIGO_ERROR.no_encontrado,
+    genero === 'f' ? `${entidad} no encontrada` : `${entidad} no encontrado`,
+  );
 
 export const stockInsuficiente = (nombre: string, disponible: number, unidad?: string): AppError =>
   new AppError(

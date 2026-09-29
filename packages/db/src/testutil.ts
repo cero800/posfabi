@@ -5,7 +5,11 @@
 // importan con `import { ... } from './testutil.js'`.
 
 import type { DatabaseSync } from 'node:sqlite';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 
+import type { Rutas } from './paths.js';
 import { enMemoria, hoy, qUno } from './db.js';
 import { PIN_ADMIN_POR_DEFECTO } from './seed.js';
 
@@ -140,3 +144,32 @@ export function config(db: DatabaseSync, clave: string): string | null {
 // en el día UTC, que a las nueve de la noche en Caracas ya es mañana, y el
 // resumen del día no la encontraría.
 export { hoy };
+
+/**
+ * Rutas de una app fingida, dentro de una carpeta temporal.
+ *
+ * Devuelve también la raíz para que la prueba la borre. Sin esto, una prueba de
+ * `guardar_factura_pdf` escribiría en los Documentos reales de quien la está
+ * corriendo, que es exactamente la clase de efecto lateral que hace que un
+ * `pnpm test` en la máquina equivocada sea un incidente.
+ */
+export function rutasTemporales(): { rutas: Rutas; raiz: string } {
+  const raiz = fs.mkdtempSync(path.join(os.tmpdir(), 'tienda-prueba-'));
+  return {
+    raiz,
+    rutas: {
+      dataDir: path.join(raiz, 'datos'),
+      documentDir: path.join(raiz, 'documentos'),
+      tempDir: path.join(raiz, 'temp'),
+      dbPath: path.join(raiz, 'datos', 'tienda.db'),
+      scriptsDir: path.join(raiz, 'scripts'),
+    },
+  };
+}
+
+/** Crea todas las carpetas que declara un objeto `Rutas`. */
+export function mkdirsTmp(rutas: Rutas): void {
+  for (const dir of [rutas.dataDir, rutas.documentDir, rutas.tempDir, rutas.scriptsDir]) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+}
