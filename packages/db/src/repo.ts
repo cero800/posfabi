@@ -37,6 +37,7 @@ import {
   validarCantidad,
   validarCodigo,
   validarDocumento,
+  validarEnteroNoNegativo,
   validarMonto,
   validarMontoPositivo,
   validarNombre,
@@ -228,9 +229,7 @@ export function crearCliente(db: DatabaseSync, input: ClienteInput): number {
     throw validacion('El documento es demasiado corto');
   }
   const nombre = validarNombre(input.nombre, 'El nombre');
-  if (input.dias_credito < 0) {
-    throw validacion('Los días de crédito no pueden ser negativos');
-  }
+  validarEnteroNoNegativo(input.dias_credito, 'días de crédito');
   validarMonto(input.limite_credito, 'Límite de crédito');
 
   return ejecutar(
@@ -257,9 +256,7 @@ export function actualizarCliente(db: DatabaseSync, id: number, input: ClienteIn
     throw validacion('El documento es demasiado corto');
   }
   const nombre = validarNombre(input.nombre, 'El nombre');
-  if (input.dias_credito < 0) {
-    throw validacion('Los días de crédito no pueden ser negativos');
-  }
+  validarEnteroNoNegativo(input.dias_credito, 'días de crédito');
   validarMonto(input.limite_credito, 'Límite de crédito');
 
   ejecutar(
@@ -416,8 +413,17 @@ export function actualizarProducto(db: DatabaseSync, id: number, input: Producto
  * Desactiva el producto. No se borra porque el historial de ventas y de
  * movimientos lo referencia; además `eliminarProducto` repone el stock, que en
  * el original no se hacía y dejaba mercadería fantasma en el inventario.
+ *
+ * `operadorId` admite `null` porque el wrapper de la interfaz todavía no manda
+ * quién dio de baja el producto. Se escribe `NULL` y no un id inventado: en una
+ * tabla de auditoría, un `operador_id = 0` que nadie puede consultar es peor que
+ * un hueco, porque parece un dato y no lo es.
  */
-export function eliminarProducto(db: DatabaseSync, id: number, operadorId: number): void {
+export function eliminarProducto(
+  db: DatabaseSync,
+  id: number,
+  operadorId: number | null = null,
+): void {
   obtenerProducto(db, id);
   transaccion(db, () => {
     ejecutar(db, 'UPDATE productos SET activo = 0 WHERE id = ?', id);

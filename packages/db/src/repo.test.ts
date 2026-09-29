@@ -266,7 +266,30 @@ describe('clientes', () => {
   it('rechaza días de crédito negativos', () => {
     const db = bd();
     expect(mensajeDe(() => crearCliente(db, { ...CLIENTE, dias_credito: -1 }))).toBe(
-      'Los días de crédito no pueden ser negativos',
+      'El campo «días de crédito» no puede ser negativo',
+    );
+  });
+
+  it('rechaza días de crédito que no son un número entero', () => {
+    const db = bd();
+    for (const malo of [1.5, '30', null]) {
+      expect(
+        mensajeDe(() => crearCliente(db, { ...CLIENTE, dias_credito: malo as number })),
+        String(malo),
+      ).toBe('El campo «días de crédito» debe ser un número entero');
+    }
+  });
+
+  it('rechaza días de crédito que no vienen, en vez de dejar que lo vea SQLite', () => {
+    // El hueco que destapó el cableado del RPC: un `if (dias < 0)` no falla con
+    // `undefined` —la comparación da `false`—, así que el campo obligatorio
+    // ausente pasaba de largo y SQLite respondía con un texto sobre parámetros
+    // que no le dice nada a quien escribió la llamada.
+    const db = bd();
+    const sinDias = { ...CLIENTE } as Partial<typeof CLIENTE>;
+    delete sinDias.dias_credito;
+    expect(mensajeDe(() => crearCliente(db, sinDias as typeof CLIENTE))).toBe(
+      'El campo «días de crédito» debe ser un número entero',
     );
   });
 

@@ -38,6 +38,10 @@ export const CODIGO_ERROR = {
   impresora_no_configurada: 'impresora_no_configurada',
   /** Fallo de sistema: disco, permisos, ruta inexistente. */
   sistema: 'sistema',
+  /** La petición RPC no tiene forma válida: no es un objeto, o le falta algo. */
+  peticion_invalida: 'peticion_invalida',
+  /** Se pidió un procedure que no existe en el registro. */
+  metodo_desconocido: 'metodo_desconocido',
 } as const;
 
 export type CodigoError = (typeof CODIGO_ERROR)[keyof typeof CODIGO_ERROR];
@@ -88,6 +92,13 @@ export const stockInsuficiente = (nombre: string, disponible: number, unidad?: s
 
 export const sistema = (mensaje: string): AppError =>
   new AppError(CODIGO_ERROR.sistema, mensaje);
+
+/**
+ * Error con el código que le corresponda, para los pocos sitios donde el código
+ * depende de la situación y no hay una función auxiliar que lo nombre.
+ */
+export const conCodigo = (codigo: CodigoError, mensaje: string): AppError =>
+  new AppError(codigo, mensaje);
 
 /**
  * Fallo de escritura en la impresora.

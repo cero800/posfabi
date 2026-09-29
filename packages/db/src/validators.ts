@@ -109,6 +109,36 @@ export function validarCantidadVenta(cantidad: number, unidad: string): void {
   validarCantidad(cantidad, 'Cantidad');
 }
 
+/**
+ * Contador entero igual o mayor que cero: los días de crédito de un cliente, el
+ * orden de una categoría.
+ *
+ * Existe aparte de `validarMonto` porque un monto son céntimos y un contador no,
+ * y el mensaje tiene que decirlo: si a alguien le sale "debe ser un número
+ * entero de céntimos" al escribir los días de crédito de un cliente, va a
+ * seguir buscando qué céntimos se le olvidaron.
+ *
+ * También atrapa el `undefined`, que es el caso que justifica la función: un
+ * `campo < 0` no falla con `undefined` —la comparación es `false`— así que un
+ * campo obligatorio que llegue sin valor llega hasta el `INSERT` y SQLite
+ * responde con un texto sobre parámetros que no le dice nada a quien lo escribió.
+ */
+export function validarEnteroNoNegativo(valor: number, campo: string): void {
+  if (typeof valor !== 'number' || !Number.isInteger(valor)) {
+    // El nombre va entre comillas y en singular a propósito: el mensaje lo lee
+    // quien está rellenando un formulario, y "El campo «días de crédito» debe
+    // ser…" concuerda siempre, mientras que "Los días de crédito debe ser…"
+    // suena a hueco.
+    throw validacion(`El campo «${campo}» debe ser un número entero`);
+  }
+  if (valor < 0) {
+    throw validacion(`El campo «${campo}» no puede ser negativo`);
+  }
+  if (valor > MAX_CANTIDAD) {
+    throw validacion(`El campo «${campo}» excede el máximo permitido`);
+  }
+}
+
 //---------------------------------------------------------------------------
 // Enumerados cerrados
 //---------------------------------------------------------------------------

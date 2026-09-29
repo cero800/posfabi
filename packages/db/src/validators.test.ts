@@ -14,6 +14,7 @@ import {
   validarCombinacionPago,
   validarDescuento,
   validarDocumento,
+  validarEnteroNoNegativo,
   validarMoneda,
   validarMonto,
   validarMontoPositivo,
@@ -55,6 +56,43 @@ describe('validarMonto', () => {
 
   it('rechaza un monto fraccionario, que no es un número de céntimos', () => {
     expect(mensajeDe(() => validarMonto(19.99, 'Precio'))).toMatch(/entero de céntimos/);
+  });
+});
+
+describe('validarEnteroNoNegativo', () => {
+  it('acepta 0 y un contador normal', () => {
+    validarEnteroNoNegativo(0, 'días de crédito');
+    validarEnteroNoNegativo(30, 'días de crédito');
+    validarEnteroNoNegativo(MAX_CANTIDAD, 'días de crédito');
+  });
+
+  it('rechaza un valor que no es un entero', () => {
+    // El caso que justifica la función: `undefined` no es un entero, y un
+    // `if (valor < 0)` no lo atrapa porque comparar con `undefined` da `false`.
+    for (const malo of [1.5, '30', null, undefined, Number.NaN, true, {}, []]) {
+      expect(
+        mensajeDe(() => validarEnteroNoNegativo(malo as number, 'días de crédito')),
+        String(malo),
+      ).toBe('El campo «días de crédito» debe ser un número entero');
+    }
+  });
+
+  it('rechaza un negativo, con un mensaje propio', () => {
+    expect(mensajeDe(() => validarEnteroNoNegativo(-1, 'días de crédito'))).toBe(
+      'El campo «días de crédito» no puede ser negativo',
+    );
+  });
+
+  it('rechaza un contador disparatado', () => {
+    expect(mensajeDe(() => validarEnteroNoNegativo(MAX_CANTIDAD + 1, 'días de crédito'))).toBe(
+      'El campo «días de crédito» excede el máximo permitido',
+    );
+  });
+
+  it('no habla de céntimos, porque un contador no es un monto', () => {
+    // `validarMonto` habría dicho «debe ser un número entero de céntimos», que
+    // deja a quien rellena el formulario buscando qué céntimos se le olvidaron.
+    expect(mensajeDe(() => validarEnteroNoNegativo(1.5, 'orden'))).not.toMatch(/céntimos/);
   });
 });
 
