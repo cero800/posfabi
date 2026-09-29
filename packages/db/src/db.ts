@@ -239,6 +239,30 @@ export function ejecutarScript(db: DatabaseSync, sql: string): void {
   }
 }
 
+//---------------------------------------------------------------------------
+// Fecha
+//---------------------------------------------------------------------------
+
+/**
+ * La fecha de hoy tal como la ve SQLite, en `AAAA-MM-DD`.
+ *
+ * Viene de `date('now')` y no de `new Date()` a propósito, por dos razones.
+ * Una: los reportes filtran con `date('now')`, así que la fecha con la que se
+ * archiva una venta tiene que ser la misma expresión con la que se va a buscar;
+ * si una usara el reloj de JavaScript y la otra no, una venta de medianoche
+ * quedaría en un día que el resumen no encuentra. Dos: `toISOString()` convierte
+ * a UTC, así que a las nueve de la noche en Caracas una venta de "hoy" se
+ * archivaría como mañana. El SQLite tampoco corrige eso, pero al menos las dos
+ * mitades del sistema piensan en la misma cosa.
+ *
+ * A las 00:30 hora de Caracas SQLite también da el día anterior. Se documenta
+ * en vez de esconderse: es el mismo criterio que usa el reporte, y lo que
+ * importa es que caja y ventas coincidan.
+ */
+export function hoy(db: DatabaseSync): string {
+  return qObligatorio<{ h: string }>(db, 'Fecha actual', "SELECT date('now') AS h").h;
+}
+
 export { DatabaseSync };
 export type { SQLInputValue };
 export { asegurarDataDir };

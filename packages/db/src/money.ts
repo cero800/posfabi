@@ -21,6 +21,20 @@ export const MAX_MONTO = 99_999_999_999;
 export const MAX_CANTIDAD = 1_000_000;
 
 /**
+ * Céntimos de tolerancia al comparar un pago con lo que debe.
+ *
+ * Existe por el redondeo al mezclar monedas: un cliente que paga $5 en efectivo
+ * más Bs 184,25 a tasa 36,85 no cuadra al céntimo, y de 1 a 3 centavos la
+ * diferencia es del cálculo, no del cajero. Rechazarla deja al cliente frente a
+ * una venta ya cobrada con el sistema diciendo que debe un céntimo.
+ *
+ * Vive aquí y no en cada módulo porque ventas y pagos tienen que tolerar lo
+ * mismo: si el mismo error de redondeo bloquea en una pantalla y no en la otra,
+ * el cajero acaba buscando por dónde pasar.
+ */
+export const HOLGURA_CENTIMOS = 1;
+
+/**
  * Verifica que un importe sea un entero representable sin pérdida.
  * Lanza `AppError` de validación si no lo es.
  */

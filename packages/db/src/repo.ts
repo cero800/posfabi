@@ -600,7 +600,7 @@ interface Movimiento {
  * `cantidad` es siempre positiva; el signo lo determina el tipo. Actualizar el
  * stock y registrar el movimiento van juntos porque si uno de los dos fallara
  * el inventario y su historia dirían cosas distintas, que es el peor estado
- * posible: nobody puede explicar un descuadre.
+ * posible: nadie puede explicar después un descuadre.
  *
  * Lanza si el stock quedaría negativo, para que el llamador revierta toda la
  * operación (por ejemplo, los renglones ya insertados de una venta).
