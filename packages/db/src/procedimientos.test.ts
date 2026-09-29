@@ -438,17 +438,18 @@ describe('estado que se rompe si se repite', () => {
   it('no deja anular dos veces la misma venta', async () => {
     const u = usuario(db);
     tasa(db, 36.5);
+    const c = cliente(db);
     const p = producto(db, 350);
     stock(db, p, 10);
     await ok('abrir_caja', { caja: { operador_id: u } });
     const v = await ok<{ id: number }>('crear_venta', {
       venta: {
-        cliente_id: clienteMostrador(db),
-        tipo: 'contado',
+        cliente_id: c,
+        tipo: 'credito',
         descuento: 0,
         operador_id: u,
         detalles: [{ producto_id: p, cantidad: 1 }],
-        pagos: [{ monto: 350, tipo_pago: 'efectivo', moneda: 'usd' }],
+        pagos: [],
       },
     });
 
@@ -457,15 +458,14 @@ describe('estado que se rompe si se repite', () => {
     expect(e.codigo).toBe(CODIGO_ERROR.venta_anulada);
   });
 
-  it('anula una venta a crédito aunque el cliente ya haya abonado', async () => {
-    // Comportamiento heredado del backend en Rust, que tampoco lo impedía: la
-    // venta pasa a `anulada`, el stock se repone y los pagos quedan como
-    // estaban. El enum de errores declara `venta_con_pagos` pero nada lo lanza.
-    //
-    // Se documenta en vez de "arreglarse" porque es una regla de negocio, no un
-    // defecto de código: anular una venta cobrada debería generar un saldo a
-    // favor del cliente, y ese asiento no existe. Hay que decidirlo con el
-    // dueño de la tienda, no aquí.
+  it('no anula una venta a crédito a la que el cliente ya abonó', async () => {
+    // El abono no lleva `venta_id` —el FIFO del estado de cuenta lo reparte
+    // entre las facturas—, así que la venta sola parece no tener pagos. Pero el
+    // dinero sí está detrás de ella, y anularla lo dejaba huérfano: la venta
+    // salía del total facturado, los 500 se quedaban en `pagos` y en el
+    // arqueo del día, y el `Math.max(facturado - pagado, 0)` recortaba la
+    // cuenta a cero. El dinero no aparecía ni como deuda ni como saldo a
+    // favor, en ninguna pantalla.
     const u = usuario(db);
     tasa(db, 36.5);
     const c = cliente(db);
@@ -489,24 +489,96 @@ describe('estado que se rompe si se repite', () => {
         pagos: [{ monto: 500, tipo_pago: 'efectivo', moneda: 'usd' }],
       },
     });
-    await ok('anular_venta', { venta_id: v.id, motivo: 'se lo llevó sin pagar', operador_id: u });
 
+    const e = await falla('anular_venta', {
+      venta_id: v.id,
+      motivo: 'se lo llevó sin pagar',
+      operador_id: u,
+    });
+    expect(e.codigo).toBe(CODIGO_ERROR.venta_con_pagos);
+    // El mensaje dice qué hacer en su lugar, no solo qué pasó.
+    expect(e.mensaje).toMatch(/devoluci[oó]n/i);
+
+    // Y nada se movió: la venta sigue viva, el stock sigue descontado, y los
+    // 500 siguen imputándose a la factura que los respaldaba.
     const ventas = await ok<{ id: number; estado: string }[]>('listar_ventas');
-    expect(ventas.find((x) => x.id === v.id)?.estado).toBe('anulada');
-
-    // El abono sigue registrado: el saldo del cliente no se toca solo.
-    // Y aquí está el problema real, que este test deja escrito para que no se
-    // pierda: `saldo_pendiente` queda en 0 aunque el cliente haya pagado 500.
-    // Es el `Math.max(facturado - pagado, 0)` de `deudores.ts` — con la venta
-    // anulada, `facturado` es 0, y 0 − 500 se recorta a 0 en vez de dejar una
-    // deuda a favor. El dinero sigue en `pagos` y por tanto en el arqueo de
-    // caja, pero en la cuenta del cliente no aparece por ningún lado: ni debe
-    // nada, ni tiene saldo a favor.
+    expect(ventas.find((x) => x.id === v.id)?.estado).toBe('entregada');
     const cuenta = await ok<{ total_pagado: number; saldo_pendiente: number }>('estado_cuenta', {
       cliente_id: c,
     });
     expect(cuenta.total_pagado).toBe(500);
-    expect(cuenta.saldo_pendiente).toBe(0);
+    expect(cuenta.saldo_pendiente).toBe(500);
+  });
+
+  it('no anula una venta de contado, que siempre está cobrada', async () => {
+    // `crearVenta` no admite una venta de contado sin pago, así que aquí el
+    // veto es siempre el caso. No es una pérdida de función: devolver una
+    // venta cobrada es una devolución, que repone el stock y deja rastro.
+    const u = usuario(db);
+    tasa(db, 36.5);
+    const p = producto(db, 500);
+    stock(db, p, 10);
+    await ok('abrir_caja', { caja: { operador_id: u } });
+    const v = await ok<{ id: number }>('crear_venta', {
+      venta: {
+        cliente_id: clienteMostrador(db),
+        tipo: 'contado',
+        descuento: 0,
+        operador_id: u,
+        detalles: [{ producto_id: p, cantidad: 1 }],
+        pagos: [{ monto: 500, tipo_pago: 'efectivo', moneda: 'usd' }],
+      },
+    });
+
+    const e = await falla('anular_venta', { venta_id: v.id, motivo: 'mal', operador_id: u });
+    expect(e.codigo).toBe(CODIGO_ERROR.venta_con_pagos);
+  });
+
+  it('anula una venta a crédito cuando el abono es de una factura más antigua', async () => {
+    // El veto mira el reparto FIFO, no el saldo del cliente. Un abono que
+    // alcanza a la factura vieja no impide deshacer una venta nueva que
+    // todavía nadie pagó; de lo contrario el cliente quedaría con sus facturas
+    // viejas bloqueadas para siempre.
+    const u = usuario(db);
+    tasa(db, 36.5);
+    const c = cliente(db);
+    const p = producto(db, 1000);
+    stock(db, p, 10);
+    await ok('abrir_caja', { caja: { operador_id: u } });
+
+    const vieja = await ok<{ id: number }>('crear_venta', {
+      venta: {
+        cliente_id: c,
+        tipo: 'credito',
+        descuento: 0,
+        operador_id: u,
+        detalles: [{ producto_id: p, cantidad: 1 }],
+        pagos: [],
+      },
+    });
+    const nueva = await ok<{ id: number }>('crear_venta', {
+      venta: {
+        cliente_id: c,
+        tipo: 'credito',
+        descuento: 0,
+        operador_id: u,
+        detalles: [{ producto_id: p, cantidad: 1 }],
+        pagos: [],
+      },
+    });
+    // Un abono exacto por la factura vieja: el FIFO se lo queda entero.
+    await ok('registrar_abono', {
+      abono: {
+        cliente_id: c,
+        operador_id: u,
+        pagos: [{ monto: 1000, tipo_pago: 'efectivo', moneda: 'usd' }],
+      },
+    });
+
+    await ok('anular_venta', { venta_id: nueva.id, motivo: 'error de tecleo', operador_id: u });
+    // La vieja, que sí está pagada, sigue protegida.
+    const e = await falla('anular_venta', { venta_id: vieja.id, motivo: 'x', operador_id: u });
+    expect(e.codigo).toBe(CODIGO_ERROR.venta_con_pagos);
   });
 
   it('no deja anular sin motivo', async () => {

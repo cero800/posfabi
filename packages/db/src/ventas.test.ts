@@ -12,6 +12,9 @@ import {
   obtenerVenta,
 } from './ventas.js';
 import { cantidadDisponible, setPrecioCliente } from './repo.js';
+import { registrarAbono } from './pagos.js';
+import { registrarDevolucion } from './devoluciones.js';
+import { estadoCuenta } from './deudores.js';
 import {
   abrirCaja,
   bd,
@@ -558,35 +561,54 @@ describe('consultas de ventas', () => {
 //---------------------------------------------------------------------------
 
 describe('anularVenta', () => {
-  function ventaConStock(): { db: DatabaseSync; op: number; mostrador: number; p: number } {
-    const { db, op, mostrador } = escenario();
+  function ventaConStock(): {
+    db: DatabaseSync;
+    op: number;
+    mostrador: number;
+    ana: number;
+    p: number;
+  } {
+    const { db, op, mostrador, ana } = escenario();
     const p = producto(db, 100);
     stock(db, p, 10);
-    return { db, op, mostrador, p };
+    return { db, op, mostrador, ana, p };
+  }
+
+  /**
+   * Venta a crédito sin cobrar, que es la única que se puede anular.
+   *
+   * Los tests de anulación usan esta forma y no una venta de contado porque una
+   * venta de contado SIEMPRE tiene pago —`crearVenta` no admite una sin— y una
+   * venta con pago ya no se anula. Anular es para deshacer una venta mal
+   * registrada; lo que se devuelve de una venta cobrada es una devolución.
+   */
+  function sinCobrar(
+    db: DatabaseSync,
+    p: number,
+    cantidad: number,
+    op: number,
+    ana: number,
+  ): number {
+    return crearVenta(db, ventaContado(p, cantidad, op, ana, { tipo: 'credito', pagos: [] })).id;
   }
 
   it('devuelve la mercadería al stock y marca la venta', () => {
-    const { db, op, mostrador, p } = ventaConStock();
-    const v = crearVenta(db, ventaContado(p, 3, op, mostrador, {
-      pagos: [{ monto: 300, tipo_pago: 'efectivo', moneda: 'usd' }],
-    }));
+    const { db, op, ana, p } = ventaConStock();
+    const id = sinCobrar(db, p, 3, op, ana);
     expect(cantidadDisponible(db, p)).toBe(7);
 
-    anularVenta(db, v.id, '  mercadería dañada  ', op);
+    anularVenta(db, id, '  mercadería dañada  ', op);
 
     expect(cantidadDisponible(db, p)).toBe(10);
-    expect(obtenerVenta(db, v.id).estado).toBe('anulada');
-    expect(qUno<{ anulada_motivo: string }>(db, 'SELECT anulada_motivo FROM ventas WHERE id = ?', v.id)?.anulada_motivo).toBe(
+    expect(obtenerVenta(db, id).estado).toBe('anulada');
+    expect(qUno<{ anulada_motivo: string }>(db, 'SELECT anulada_motivo FROM ventas WHERE id = ?', id)?.anulada_motivo).toBe(
       'mercadería dañada',
     );
   });
 
   it('deja el asiento de reposición en el libro', () => {
-    const { db, op, mostrador, p } = ventaConStock();
-    const v = crearVenta(db, ventaContado(p, 3, op, mostrador, {
-      pagos: [{ monto: 300, tipo_pago: 'efectivo', moneda: 'usd' }],
-    }));
-    anularVenta(db, v.id, 'error de caja', op);
+    const { db, op, ana, p } = ventaConStock();
+    anularVenta(db, sinCobrar(db, p, 3, op, ana), 'error de caja', op);
 
     expect(
       qUno<{ tipo: string; cantidad: number; motivo: string }>(
@@ -596,19 +618,15 @@ describe('anularVenta', () => {
     ).toEqual({ tipo: 'ajuste', cantidad: 3, motivo: 'Anulación de venta' });
   });
 
-  it('no borra el número de factura ni los pagos', () => {
-    const { db, op, mostrador, p } = ventaConStock();
-    const v = crearVenta(db, ventaContado(p, 3, op, mostrador, {
-      pagos: [{ monto: 300, tipo_pago: 'efectivo', moneda: 'usd' }],
-    }));
-    anularVenta(db, v.id, 'se equivocaron de cliente', op);
+  it('no borra el número de factura ni lo reutiliza', () => {
+    const { db, op, mostrador, ana, p } = ventaConStock();
+    const id = sinCobrar(db, p, 3, op, ana);
+    anularVenta(db, id, 'se equivocaron de cliente', op);
 
-    expect(obtenerVenta(db, v.id).numero_factura).toBe(1);
-    expect(qUno<{ n: number }>(db, 'SELECT COUNT(*) AS n FROM pagos WHERE venta_id = ?', v.id)?.n).toBe(1);
+    expect(obtenerVenta(db, id).numero_factura).toBe(1);
 
     // La siguiente venta no reutiliza el número: una factura anulada sigue
     // siendo una factura que existió.
-    stock(db, p, 10);
     const siguiente = crearVenta(db, ventaContado(p, 1, op, mostrador, {
       pagos: [{ monto: 100, tipo_pago: 'efectivo', moneda: 'usd' }],
     }));
@@ -616,22 +634,18 @@ describe('anularVenta', () => {
   });
 
   it('exige un motivo', () => {
-    const { db, op, mostrador, p } = ventaConStock();
-    const v = crearVenta(db, ventaContado(p, 1, op, mostrador, {
-      pagos: [{ monto: 100, tipo_pago: 'efectivo', moneda: 'usd' }],
-    }));
-    expect(codigoDe(() => anularVenta(db, v.id, '   ', op))).toBe(CODIGO_ERROR.validacion);
-    expect(obtenerVenta(db, v.id).estado).toBe('entregada');
+    const { db, op, ana, p } = ventaConStock();
+    const id = sinCobrar(db, p, 1, op, ana);
+    expect(codigoDe(() => anularVenta(db, id, '   ', op))).toBe(CODIGO_ERROR.validacion);
+    expect(obtenerVenta(db, id).estado).toBe('entregada');
     expect(cantidadDisponible(db, p)).toBe(9);
   });
 
   it('no anula dos veces', () => {
-    const { db, op, mostrador, p } = ventaConStock();
-    const v = crearVenta(db, ventaContado(p, 1, op, mostrador, {
-      pagos: [{ monto: 100, tipo_pago: 'efectivo', moneda: 'usd' }],
-    }));
-    anularVenta(db, v.id, 'mal', op);
-    expect(codigoDe(() => anularVenta(db, v.id, 'otra vez', op))).toBe(CODIGO_ERROR.venta_anulada);
+    const { db, op, ana, p } = ventaConStock();
+    const id = sinCobrar(db, p, 1, op, ana);
+    anularVenta(db, id, 'mal', op);
+    expect(codigoDe(() => anularVenta(db, id, 'otra vez', op))).toBe(CODIGO_ERROR.venta_anulada);
     // El stock no se repone dos veces.
     expect(cantidadDisponible(db, p)).toBe(10);
   });
@@ -642,19 +656,115 @@ describe('anularVenta', () => {
   });
 
   it('una venta anulada sale del total facturado del cliente', () => {
-    const { db, op, ana } = escenario();
-    const p = producto(db, 100);
-    stock(db, p, 10);
-    const v = crearVenta(db, ventaContado(p, 5, op, ana, { tipo: 'credito', pagos: [] }));
+    const { db, op, ana, p } = ventaConStock();
+    const id = sinCobrar(db, p, 5, op, ana);
 
     expect(
       qUno<{ n: number }>(db, "SELECT SUM(total) AS n FROM ventas WHERE cliente_id = ? AND estado = 'entregada'", ana)?.n,
     ).toBe(500);
 
-    anularVenta(db, v.id, 'devolución de mercancía', op);
+    anularVenta(db, id, 'se lo llevó sin pagar', op);
 
     expect(
       qUno<{ n: number }>(db, "SELECT COALESCE(SUM(total), 0) AS n FROM ventas WHERE cliente_id = ? AND estado = 'entregada'", ana)?.n,
     ).toBe(0);
+  });
+});
+
+//---------------------------------------------------------------------------
+// Anulación de ventas con dinero detrás
+//---------------------------------------------------------------------------
+
+describe('anularVenta · la venta no puede tener dinero detrás', () => {
+  /** Venta a crédito de $10,00 a Ana, sin cobrar. */
+  function ventaACredito(db: DatabaseSync, op: number, ana: number): number {
+    const p = producto(db, 1000);
+    stock(db, p, 10);
+    return crearVenta(db, ventaContado(p, 1, op, ana, { tipo: 'credito', pagos: [] })).id;
+  }
+
+  function abono(db: DatabaseSync, op: number, ana: number, monto: number): void {
+    registrarAbono(db, {
+      cliente_id: ana,
+      operador_id: op,
+      pagos: [{ monto, tipo_pago: 'efectivo', moneda: 'usd' }],
+    });
+  }
+
+  it('un abono a cuenta también pone dinero detrás de la venta', () => {
+    // Un abono no lleva `venta_id`, así que la venta no tiene pagos propios. El
+    // veto tiene que mirar el reparto FIFO del estado de cuenta, que es lo
+    // único que sabe a qué factura se imputa ese abono.
+    const { db, op, ana } = escenario();
+    const id = ventaACredito(db, op, ana);
+    abono(db, op, ana, 400);
+
+    expect(codigoDe(() => anularVenta(db, id, 'x', op))).toBe(CODIGO_ERROR.venta_con_pagos);
+  });
+
+  it('basta con que el pago alcance a una parte de la venta', () => {
+    // Un abono de 100 contra una factura de 1000 no cubre la venta, pero sí le
+    // quita mercadería al cliente, y anularla devolvería el stock de algo que
+    // ya se cobró. El veto no espera a que la factura esté liquidada.
+    const { db, op, ana } = escenario();
+    const id = ventaACredito(db, op, ana);
+    abono(db, op, ana, 100);
+
+    expect(codigoDe(() => anularVenta(db, id, 'x', op))).toBe(CODIGO_ERROR.venta_con_pagos);
+  });
+
+  it('no toca la venta ni el stock cuando veta', () => {
+    const { db, op, ana } = escenario();
+    const id = ventaACredito(db, op, ana);
+    abono(db, op, ana, 1000);
+    codigoDe(() => anularVenta(db, id, 'x', op));
+
+    expect(obtenerVenta(db, id).estado).toBe('entregada');
+    expect(
+      qUno<{ n: number }>(db, 'SELECT COUNT(*) AS n FROM movimientos_inventario WHERE motivo = ?', 'Anulación de venta')
+        ?.n,
+    ).toBe(0);
+  });
+
+  it('el veto no se extiende a facturas que el pago no alcanza', () => {
+    // Dos ventas de $10,00 y un abono de $10,00: el FIFO se lo queda entero en
+    // la primera. Si el veto mirara el saldo del cliente en vez del reparto,
+    // bloquearía las dos y el cliente no podría deshacer nunca nada.
+    const { db, op, ana } = escenario();
+    const p = producto(db, 1000);
+    stock(db, p, 10);
+    const vieja = crearVenta(db, ventaContado(p, 1, op, ana, { tipo: 'credito', pagos: [] })).id;
+    const nueva = crearVenta(db, ventaContado(p, 1, op, ana, { tipo: 'credito', pagos: [] })).id;
+    abono(db, op, ana, 1000);
+
+    anularVenta(db, nueva, 'error de tecleo', op);
+    expect(obtenerVenta(db, nueva).estado).toBe('anulada');
+    expect(codigoDe(() => anularVenta(db, vieja, 'x', op))).toBe(CODIGO_ERROR.venta_con_pagos);
+  });
+
+  it('una venta ya devuelta por completo no tiene dinero detrás', () => {
+    // El caso límite: la factura de $10,00 está pagada y devuelta entera, así
+    // que su saldo en el reparto es 0 y ningún pago "toca" esa línea. Anularla
+    // se permite, y no cambia nada de la cuenta: lo facturado ya era 0 por la
+    // devolución, y lo abonado sigue compensado por ella. El dinero no se
+    // pierde —queda neutralizado por la devolución—, pero queda una asimetría
+    // a la vista: se ve lo pagado de una factura que ya no está.
+    const { db, op, ana } = escenario();
+    const id = ventaACredito(db, op, ana);
+    abono(db, op, ana, 1000);
+    registrarDevolucion(db, {
+      cliente_id: ana,
+      venta_id: id,
+      monto: 1000,
+      motivo: 'todo roto',
+      afecta_stock: false,
+      operador_id: op,
+    });
+
+    const antes = estadoCuenta(db, ana);
+    anularVenta(db, id, 'todo devuelto', op);
+
+    expect(obtenerVenta(db, id).estado).toBe('anulada');
+    expect(estadoCuenta(db, ana)).toEqual(antes);
   });
 });

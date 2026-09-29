@@ -24,6 +24,7 @@ import { aUsd, cent, HOLGURA_CENTIMOS, redondearCent } from './money.js';
 import { getTasaCambio } from './config.js';
 import { clienteExiste, descontarStock, precioEfectivo, reponerStock } from './repo.js';
 import { exigirCajaAbierta } from './caja.js';
+import { pagosImputadosAVenta } from './deudores.js';
 import {
   validarCantidadVenta,
   validarCombinacionPago,
@@ -294,12 +295,52 @@ export function listarVentasCliente(db: DatabaseSync, clienteId: number): Venta[
 }
 
 /**
+ * ¿Hay dinero detrás de esta venta?
+ *
+ * Dos maneras de que lo haya, y las dos importan:
+ *
+ *   1. Un pago con `venta_id` apuntando aquí. Es el caso normal de la venta de
+ *      contado, y no hay discusión posible: el cobro se hizo por esta factura.
+ *
+ *   2. Un abono a cuenta que el FIFO le imputa a esta venta. Una venta a
+ *      crédito no tiene pagos propios, así que (1) nunca se dispara y el
+ *      dinero del cliente quedaría repartido entre facturas sin que ninguna
+ *      lo reflejara.
+ *
+ * El FIFO solo se consulta para ventas a crédito. En las de contado daría una
+ * respuesta falsa en las dos direcciones: todas las ventas del Mostrador
+ * comparten cliente, así que repartir su bolsa por fecha atribuiría el pago de
+ * una factura a otra más vieja y dejaría pasar anulaciones de ventas que sí se
+ * cobraron. Para el Mostrador, (1) es exacto y basta.
+ */
+function tienePagos(
+  db: DatabaseSync,
+  venta: { cliente_id: number; tipo: string },
+  ventaId: number,
+): boolean {
+  const directos = qUno<{ n: number }>(
+    db,
+    'SELECT COUNT(*) AS n FROM pagos WHERE venta_id = ?',
+    ventaId,
+  );
+  if ((directos?.n ?? 0) > 0) return true;
+  if (venta.tipo !== 'credito') return false;
+  return pagosImputadosAVenta(db, venta.cliente_id, ventaId);
+}
+
+/**
  * Anula una venta: devuelve la mercadería al stock y marca la venta como anulada.
  *
  * El número de factura se conserva y no se reutiliza: una factura anulada sigue
- * siendo una factura que existió, y en la contabilidad no se borra. Sus pagos
- * tampoco se borran: salen del cálculo del estado de cuenta porque la venta
- * deja de estar 'entregada', no porque el dinero desaparezca.
+ * siendo una factura que existió, y en la contabilidad no se borra.
+ *
+ * Solo se anula lo que no está cobrado. Anular una venta con dinero detrás
+ * entregaría la mercadería y dejaría el pago sin factura que lo respaldara: el
+ * efectivo sigue en el arqueo del día (el arqueo suma `pagos`, no `ventas`) y
+ * el saldo del cliente se recorta a cero, así que ni la tienda ni el cliente
+ * pueden ver ese dinero en ninguna parte. La anulación es para las ventas mal
+ * hechas, no un refund; lo que se devuelve de una venta cobrada es una
+ * devolución, que sí deja rastro y sí devuelve la mercadería al stock.
  *
  * La fecha de la venta es la que fija el FIFO del deudor, así que anular una
  * factura vieja no rejuvenece al cliente.
@@ -315,13 +356,27 @@ export function anularVenta(
     throw validacion('La anulación requiere un motivo');
   }
 
-  const venta = qUno<{ estado: string }>(db, 'SELECT estado FROM ventas WHERE id = ?', ventaId);
+  const venta = qUno<{ estado: string; cliente_id: number; tipo: string }>(
+    db,
+    'SELECT estado, cliente_id, tipo FROM ventas WHERE id = ?',
+    ventaId,
+  );
   if (venta === null) throw new AppError(CODIGO_ERROR.no_encontrado, 'Venta no encontrada');
   if (venta.estado === 'anulada') {
     throw new AppError(CODIGO_ERROR.venta_anulada, 'La venta ya está anulada');
   }
 
   transaccion(db, () => {
+    // Dentro de la transacción, no antes: un abono que entra entre la
+    // comprobación y la escritura tiene que ver la venta todavía viva.
+    if (tienePagos(db, venta, ventaId)) {
+      throw new AppError(
+        CODIGO_ERROR.venta_con_pagos,
+        'La venta tiene pagos asociados. No se puede anular porque el dinero ' +
+          'ya cambió de manos: registrá la devolución de la mercadería.',
+      );
+    }
+
     const lineas = qTodos<{ producto_id: number; cantidad: number }>(
       db,
       'SELECT producto_id, cantidad FROM detalle_ventas WHERE venta_id = ? ORDER BY id',
@@ -329,8 +384,7 @@ export function anularVenta(
     );
 
     for (const l of lineas) {
-      // `reponerStock` suma al stock y asienta el movimiento en el libro. Los
-      // pagos de la venta se dejan como están: no se borran.
+      // `reponerStock` suma al stock y asienta el movimiento en el libro.
       reponerStock(db, l.producto_id, l.cantidad, ventaId, operadorId);
     }
 

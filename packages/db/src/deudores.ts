@@ -19,8 +19,17 @@ import { noEncontrado } from './errors.js';
 
 /** Una factura dentro del FIFO, con la marca de si todavía está en plazo. */
 interface LineaFifo {
+  ventaId: number;
   saldo: number;
   alDia: boolean;
+}
+
+/** Cuánto de una factura cubren los pagos de la cuenta, y cuánto venció. */
+interface Reparto {
+  /** Céntimos US$ de los pagos que alcanzan a esta factura. */
+  cubierto: number;
+  /** Céntimos US$ de la factura que ni están cubiertos ni vencen todavía. */
+  vencido: number;
 }
 
 /** Totales derivados: lo facturado, lo devuelto y lo pagado en US$. */
@@ -31,33 +40,40 @@ interface Totales {
 }
 
 /**
- * Reparte los pagos acumulados sobre las ventas entregadas más antiguas y
- * devuelve de cuánto es el vencido.
+ * Reparte los pagos acumulados sobre las ventas entregadas más antiguas.
  *
  * Es FIFO y no proporcional a propósito: si el cliente tiene una factura vieja
  * de $5 y otra de $100, y ha pagado $30, lo natural es que la de $5 esté
  * saldada y queden $75 de la otra. Si la vieja está en mora, es la que se
  * persigue. Repartir proporcionalmente dejaría ambas a medio pagar y no
  * señalaría ninguna.
+ *
+ * Este es el ÚNICO reparto de pagos del sistema. Del salen las dos preguntas
+ * que se le hacen a una cuenta —cuánto está vencido, y si un pago alcanza a una
+ * venta concreta— porque dos copias de la misma aritmética acabarían
+ * discrepando: la pantalla diría que la factura está cubierta y la anulación
+ * que no lo está, y el cajero no tendría con cuál de las dos quedarse.
  */
-function calcularVencido(lineas: LineaFifo[], pagado: number): number {
-  let porPagar = pagado;
-  let vencido = 0;
+function repartirPagos(lineas: LineaFifo[], pagado: number): Map<number, Reparto> {
+  let porPagar = Math.max(pagado, 0);
+  const reparto = new Map<number, Reparto>();
 
-  for (const { saldo, alDia } of lineas) {
+  for (const { ventaId, saldo, alDia } of lineas) {
     if (saldo <= 0) continue;
-    if (porPagar >= saldo) {
-      porPagar -= saldo;
-    } else if (porPagar > 0) {
-      // El pago alcanza a cubrir parte de esta factura pero no toda.
-      if (!alDia) vencido += saldo - porPagar;
-      porPagar = 0;
-    } else if (!alDia) {
-      // No queda pago para esta factura y su plazo ya venció.
-      vencido += saldo;
-    }
+    const cubierto = Math.min(porPagar, saldo);
+    porPagar -= cubierto;
+    // Lo que el pago no cubre es vencido solo si el plazo ya pasó. Lo que aún
+    // está al día es deuda corriente, y en un total de cuenta no se separa.
+    reparto.set(ventaId, { cubierto, vencido: alDia ? 0 : saldo - cubierto });
   }
 
+  return reparto;
+}
+
+/** Suma de lo vencido en el reparto, o sea la parte de la deuda que hay que perseguir. */
+function calcularVencido(lineas: LineaFifo[], pagado: number): number {
+  let vencido = 0;
+  for (const r of repartirPagos(lineas, pagado).values()) vencido += r.vencido;
   return vencido;
 }
 
@@ -99,9 +115,10 @@ function totalesCliente(db: DatabaseSync, clienteId: number): Totales {
 
 /** Ventas entregadas del cliente con su saldo ya descontadas devoluciones. */
 function lineasCliente(db: DatabaseSync, clienteId: number, diasCredito: number): LineaFifo[] {
-  return qTodos<{ saldo: number; al_dia: number }>(
+  return qTodos<{ venta_id: number; saldo: number; al_dia: number }>(
     db,
-    `SELECT v.total - COALESCE((SELECT SUM(d.monto) FROM devoluciones d
+    `SELECT v.id AS venta_id,
+            v.total - COALESCE((SELECT SUM(d.monto) FROM devoluciones d
                                  WHERE d.venta_id = v.id), 0) AS saldo,
             (date('now') <= date(v.fecha, '+' || ?2 || ' days')) AS al_dia
        FROM ventas v
@@ -109,7 +126,7 @@ function lineasCliente(db: DatabaseSync, clienteId: number, diasCredito: number)
       ORDER BY v.fecha ASC, v.id ASC`,
     clienteId,
     diasCredito,
-  ).map((f) => ({ saldo: f.saldo, alDia: f.al_dia !== 0 }));
+  ).map((f) => ({ ventaId: f.venta_id, saldo: f.saldo, alDia: f.al_dia !== 0 }));
 }
 
 /** Arma el `EstadoCuenta` a partir de datos ya consultados. */
@@ -160,6 +177,43 @@ export function estadoCuenta(db: DatabaseSync, clienteId: number): EstadoCuenta 
     totalesCliente(db, clienteId),
     lineasCliente(db, clienteId, cliente.dias_credito),
   );
+}
+
+/**
+ * ¿Los pagos de la cuenta del cliente llegan a esta venta?
+ *
+ * Una venta a crédito no tiene pagos propios: el dinero del cliente es una bolsa
+ * común que `estadoCuenta` reparte de la factura más antigua a la más reciente.
+ * La tabla `pagos` sola no alcanza para saber si un abono está pagando esta
+ * factura o una anterior, así que la pregunta se responde con el mismo reparto
+ * que llena la pantalla, no con una cuenta aparte.
+ *
+ * Sin este reparto, anular una venta a crédito que el cliente ya está pagando a
+ * plazos no se detectaría: la venta sale del total facturado, los pagos se
+ * quedan, y la diferencia desaparece del estado de cuenta. El dinero sigue en
+ * `pagos` y en el arqueo del día, pero ya no se lo puede atribuir a nadie.
+ */
+export function pagosImputadosAVenta(
+  db: DatabaseSync,
+  clienteId: number,
+  ventaId: number,
+): boolean {
+  const cliente = qUno<{ dias_credito: number }>(
+    db,
+    'SELECT dias_credito FROM clientes WHERE id = ?',
+    clienteId,
+  );
+  // `pagos.cliente_id` es clave foránea, así que sin cliente no hay pagos que
+  // repartir. Es defensivo, pero deja la respuesta cerrada en vez de fallar con
+  // un error que no le dice nada a quien está anulando una venta.
+  if (cliente === null) return false;
+
+  const { pagado } = totalesCliente(db, clienteId);
+  const reparto = repartirPagos(
+    lineasCliente(db, clienteId, cliente.dias_credito),
+    Math.round(pagado),
+  );
+  return (reparto.get(ventaId)?.cubierto ?? 0) > 0;
 }
 
 /**

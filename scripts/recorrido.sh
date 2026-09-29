@@ -11,6 +11,9 @@
 set -u
 URL="${1:-http://127.0.0.1:3111}"
 N=0
+# Último cuerpo de respuesta, para no tener que repetir un id a mano en los
+# pasos que dependen del id que acaba de devolver la llamada anterior.
+RESPUESTA=''
 
 llamar() {
   local method="$1" params="${2:-null}"
@@ -22,9 +25,13 @@ llamar() {
   else
     cuerpo="{\"jsonrpc\":\"2.0\",\"id\":$id,\"method\":\"$method\",\"params\":$params}"
   fi
-  local salida
-  salida=$(curl -s -X POST "$URL/rpc" -H 'content-type: application/json' -d "$cuerpo")
-  printf '%-28s %s\n' "$method" "$salida"
+  RESPUESTA=$(curl -s -X POST "$URL/rpc" -H 'content-type: application/json' -d "$cuerpo")
+  printf '%-28s %s\n' "$method" "$RESPUESTA"
+}
+
+# El id de la venta que devolvió la última `llamar crear_venta`.
+id_venta() {
+  printf '%s' "$RESPUESTA" | sed -n 's/^.*"data":{"id":\([0-9][0-9]*\).*$/\1/p'
 }
 
 echo "=== arranque ==="
@@ -92,16 +99,30 @@ llamar listar_ventas
 llamar listar_ventas
 llamar obtener_factura '{"venta_id":1}'
 llamar obtener_datos_negocio
-llamar anular_venta '{"venta_id":3,"motivo":"Error de tecleo","operador_id":1}'
-llamar anular_venta '{"venta_id":3,"motivo":"otra vez","operador_id":1}'
-llamar anular_venta '{"venta_id":1,"motivo":"no se puede anular una venta pagada","operador_id":1}'
 llamar listar_ventas
+
+echo
+echo "=== anulación: qué se puede anular y qué no ==="
+echo "-- venta a crédito sin cobrar: se anula --"
+llamar crear_venta '{"venta":{"cliente_id":2,"tipo":"credito","descuento":0,"operador_id":1,"detalles":[{"producto_id":1,"cantidad":1}],"pagos":[]}}'
+ANULABLE=$(id_venta)
+llamar anular_venta "{\"venta_id\":$ANULABLE,\"motivo\":\"Se cobró de más\",\"operador_id\":1}"
+llamar anular_venta "{\"venta_id\":$ANULABLE,\"motivo\":\"otra vez\",\"operador_id\":1}"
+echo "-- una venta de contado está cobrada por definición: se veta --"
+llamar anular_venta '{"venta_id":1,"motivo":"Error de tecleo","operador_id":1}'
+llamar anular_venta '{"venta_id":3,"motivo":"Error de tecleo","operador_id":1}'
 
 echo
 echo "=== crédito y abono ==="
 llamar estado_cuenta '{"cliente_id":2}'
 llamar estado_cuenta_todos
-llamar registrar_abono '{"abono":{"cliente_id":2,"operador_id":1,"pagos":[{"monto":10000,"tipo_pago":"efectivo","moneda":"ves"}]}}'
+# 8000 Bs = 219 centavos US$ con la tasa congelada de 36,50. Cabe en el saldo
+# pendiente de 240 que tiene Librería XYZ, así que el abono entra y la cuenta se
+# puede leer con un cliente que realmente debe algo.
+llamar registrar_abono '{"abono":{"cliente_id":2,"operador_id":1,"pagos":[{"monto":8000,"tipo_pago":"efectivo","moneda":"ves"}]}}'
+echo "-- con el abono encima, esa venta a crédito ya tiene dinero detrás --"
+llamar estado_cuenta '{"cliente_id":2}'
+llamar anular_venta '{"venta_id":2,"motivo":"El cliente ya abonó","operador_id":1}'
 llamar historial_pagos '{"cliente_id":2}'
 llamar listar_ventas_cliente '{"cliente_id":2}'
 llamar detalle_venta '{"venta_id":2}'

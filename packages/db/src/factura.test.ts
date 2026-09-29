@@ -90,10 +90,13 @@ describe('facturaVenta · la cabecera', () => {
 
   it('no filtra por estado: una venta anulada también se puede imprimir', () => {
     // El cliente llega con el papel del cajero y necesita ver que está anulada.
+    // La venta va a crédito y sin cobrar, porque una venta cobrada ya no se
+    // puede anular (ver `anularVenta` en `ventas.ts`).
     const ctx = escenario();
-    anularVenta(ctx.db, ctx.ventaContado, 'se cobró dos veces', ctx.op);
+    const v = ventaACredito(ctx, 1);
+    anularVenta(ctx.db, v, 'se equivocaron de cliente', ctx.op);
 
-    expect(facturaVenta(ctx.db, ctx.ventaContado).estado).toBe('anulada');
+    expect(facturaVenta(ctx.db, v).estado).toBe('anulada');
   });
 });
 
