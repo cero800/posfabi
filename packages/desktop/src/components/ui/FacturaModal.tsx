@@ -1,0 +1,355 @@
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { FileDown, Printer, Receipt, X } from 'lucide-react';
+import type { Factura, TicketInput } from '@tienda/core';
+import { TIPO_PAGO_LABELS } from '@tienda/core';
+import { formatCents, formatUsdCents } from '../../lib/format';
+import { calcularRecordatorio, leerRecordatorioDias } from '../../lib/factura';
+import { facturaPdfB64, nombreArchivoFactura } from '../../lib/facturaPdf';
+import { guardarFacturaPdf, imprimirTicket } from '../../services/db';
+import { Button } from './Button';
+import { ConfigurarImpresoraModal } from './ConfigurarImpresoraModal';
+
+interface Props {
+  factura: Factura | null;
+  onClose: () => void;
+}
+
+function fechaLegible(fecha: string): string {
+  const d = new Date(`${fecha.slice(0, 10)}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return fecha ?? '';
+  return d.toLocaleDateString('es-VE', { year: 'numeric', month: 'long', day: 'numeric' });
+}
+
+/// Convierte la factura en los datos mínimos que necesita el ticket térmico.
+function aTicket(f: Factura, recordatorio: string | null): TicketInput {
+  return {
+    negocio_nombre: f.negocio_nombre,
+    negocio_rif: f.negocio_rif,
+    negocio_telefono: f.negocio_telefono,
+    negocio_direccion: f.negocio_direccion,
+    numero_factura: f.numero_factura,
+    fecha: f.fecha,
+    cliente: f.cliente,
+    cliente_documento: f.cliente_documento,
+    subtotal: f.subtotal,
+    descuento: f.descuento,
+    total: f.total,
+    tasa_cambio: f.tasa_cambio,
+    detalle: f.detalle.map((d) => ({ producto: d.producto, cantidad: d.cantidad, subtotal: d.subtotal })),
+    pagos: f.pagos.map((p) => ({
+      tipo_pago: p.tipo_pago,
+      moneda: p.moneda,
+      monto: p.monto,
+      numero_referencia: p.numero_referencia ?? null,
+    })),
+    devoluciones: f.devoluciones.map((d) => ({
+      fecha_devolucion: d.fecha_devolucion,
+      motivo: d.motivo ?? null,
+      monto: d.monto,
+      detalle: d.detalle.map((p) => ({ nombre: p.nombre, cantidad: p.cantidad, subtotal: p.subtotal })),
+    })),
+    recordatorio,
+  };
+}
+
+export function FacturaModal({ factura, onClose }: Props) {
+  const [imprimiendo, setImprimiendo] = useState(false);
+  const [guardandoPdf, setGuardandoPdf] = useState(false);
+  const [rutaPdf, setRutaPdf] = useState<string | null>(null);
+  const [errorPdf, setErrorPdf] = useState<string | null>(null);
+  const [ticketEnviando, setTicketEnviando] = useState(false);
+  const [ticketMsg, setTicketMsg] = useState<{ tipo: 'ok' | 'error'; texto: string } | null>(null);
+  const [configAbierto, setConfigAbierto] = useState(false);
+  const [recordatorio, setRecordatorio] = useState<string | null>(null);
+  const guardadas = useRef<Set<number>>(new Set());
+
+  const guardarPdf = async () => {
+    if (!factura) return;
+    setGuardandoPdf(true);
+    setErrorPdf(null);
+    try {
+      const ruta = await guardarFacturaPdf(nombreArchivoFactura(factura), await facturaPdfB64(factura));
+      setRutaPdf(ruta);
+      guardadas.current.add(factura.venta_id);
+    } catch (e) {
+      setErrorPdf(String(e));
+    } finally {
+      setGuardandoPdf(false);
+    }
+  };
+
+  // Guardado automático la primera vez que se abre cada factura.
+  useEffect(() => {
+    setRutaPdf(null);
+    setErrorPdf(null);
+    setTicketMsg(null);
+    if (factura && !guardadas.current.has(factura.venta_id)) {
+      guardarPdf();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [factura?.venta_id]);
+
+  useEffect(() => {
+    setImprimiendo(false);
+  }, [factura?.venta_id]);
+
+  // Recordatorio de pago (factura a crédito próxima a vencer, según el umbral
+  // configurado por el negocio).
+  useEffect(() => {
+    setRecordatorio(null);
+    if (factura) {
+      void leerRecordatorioDias().then((umbral) =>
+        setRecordatorio(calcularRecordatorio(factura, umbral)),
+      );
+    }
+  }, [factura]);
+
+  const enviarTicket = async () => {
+    if (!factura) return;
+    setTicketEnviando(true);
+    setTicketMsg(null);
+    try {
+      await imprimirTicket(aTicket(factura, recordatorio));
+      setTicketMsg({ tipo: 'ok', texto: 'Ticket enviado a la impresora térmica.' });
+    } catch (e) {
+      setTicketMsg({ tipo: 'error', texto: String(e) });
+    } finally {
+      setTicketEnviando(false);
+    }
+  };
+
+  if (!factura) return null;
+
+  const imprimir = () => {
+    setImprimiendo(true);
+    try {
+      window.print();
+    } finally {
+      afterPrint();
+    }
+  };
+
+  const afterPrint = () => {
+    setTimeout(() => {
+      setImprimiendo(false);
+      onClose();
+    }, 200);
+  };
+
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden="true" />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Factura ${factura.numero_factura}`}
+        className="relative flex max-h-[90vh] w-full max-w-2xl flex-col rounded-xl bg-white shadow-xl"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-gray-100 px-5 py-3">
+          <div className="min-w-0">
+            <h2 className="text-sm font-semibold text-gray-900">Factura</h2>
+            <p className="truncate text-xs text-gray-500">Venta #{factura.venta_id} · {factura.fecha.slice(0, 10)}</p>
+            {rutaPdf && (
+              <p className="mt-0.5 truncate text-xs text-emerald-600">PDF guardado en {rutaPdf}</p>
+            )}
+            {errorPdf && (
+              <p className="mt-0.5 truncate text-xs text-red-600">No se pudo guardar el PDF: {errorPdf}</p>
+            )}
+            {ticketMsg && (
+              <p className={`mt-0.5 truncate text-xs ${ticketMsg.tipo === 'ok' ? 'text-emerald-600' : 'text-red-600'}`}>
+                {ticketMsg.texto}
+                {ticketMsg.tipo === 'error' && (
+                  <button
+                    type="button"
+                    onClick={() => setConfigAbierto(true)}
+                    className="ml-2 font-medium whitespace-nowrap underline underline-offset-2"
+                  >
+                    Configurar impresora
+                  </button>
+                )}
+              </p>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <Button size="sm" onClick={guardarPdf} disabled={guardandoPdf}>
+              <FileDown className="h-3.5 w-3.5" /> {guardandoPdf ? 'Guardando…' : 'Guardar PDF'}
+            </Button>
+            <Button size="sm" variant="secondary" onClick={enviarTicket} disabled={ticketEnviando}>
+              <Receipt className="h-3.5 w-3.5" /> {ticketEnviando ? 'Enviando…' : 'Térmica'}
+            </Button>
+            <Button size="sm" onClick={imprimir} disabled={imprimiendo}>
+              <Printer className="h-3.5 w-3.5" /> Imprimir
+            </Button>
+            <Button variant="ghost" size="sm" onClick={onClose} aria-label="Cerrar">
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto p-5">
+          {/* Área que se imprime (solo este bloque sale a la impresora). */}
+          <div className="factura-print mx-auto max-w-md bg-white text-sm text-gray-900">
+            <header className="border-b-2 border-gray-900 pb-3 text-center">
+              <h1 className="text-xl font-black uppercase tracking-wide">
+                {factura.negocio_nombre || 'Mi Negocio'}
+              </h1>
+              {factura.negocio_rif && <p className="text-xs">RIF: {factura.negocio_rif}</p>}
+              {factura.negocio_telefono && <p className="text-xs">Telf: {factura.negocio_telefono}</p>}
+              {factura.negocio_direccion && <p className="text-xs">{factura.negocio_direccion}</p>}
+            </header>
+
+            <div className="flex justify-between gap-3 border-b border-dashed border-gray-400 py-2">
+              <div>
+                <p className="text-[11px] uppercase text-gray-500">Factura N°</p>
+                <p className="font-mono text-base font-bold">{String(factura.numero_factura).padStart(4, '0')}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-[11px] uppercase text-gray-500">Fecha</p>
+                <p>{fechaLegible(factura.fecha)}</p>
+              </div>
+            </div>
+
+            <div className="border-b border-dashed border-gray-400 py-2">
+              <p className="text-[11px] uppercase text-gray-500">Cliente</p>
+              <p className="font-medium">{factura.cliente}</p>
+              {factura.cliente_documento && <p className="text-xs">{factura.cliente_documento}</p>}
+            </div>
+
+            <table className="w-full border-b border-dashed border-gray-400 py-1 text-left">
+              <thead>
+                <tr className="text-[11px] uppercase text-gray-500">
+                  <th className="py-1">Producto</th>
+                  <th className="py-1 text-center">Cant.</th>
+                  <th className="py-1 text-right">P. unit.</th>
+                  <th className="py-1 text-right">Subtotal</th>
+                </tr>
+              </thead>
+              <tbody>
+                {factura.detalle.map((d, i) => (
+                  <tr key={i}>
+                    <td className="py-1">{d.producto}</td>
+                    <td className="py-1 text-center">{d.cantidad}</td>
+                    <td className="py-1 text-right">{formatUsdCents(d.precio_unitario)}</td>
+                    <td className="py-1 text-right">{formatUsdCents(d.subtotal)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            <div className="space-y-0.5 py-2">
+              <div className="flex justify-between text-xs">
+                <span className="text-gray-600">Subtotal</span>
+                <span>{formatUsdCents(factura.subtotal)}</span>
+              </div>
+              {factura.descuento > 0 && (
+                <div className="flex justify-between text-xs">
+                  <span className="text-gray-600">Descuento</span>
+                  <span>-{formatUsdCents(factura.descuento)}</span>
+                </div>
+              )}
+              <div className="flex justify-between border-t border-gray-900 pt-1 text-base font-bold">
+                <span>Total</span>
+                <span>{formatUsdCents(factura.total)}</span>
+              </div>
+            </div>
+
+            <div className="border-t border-dashed border-gray-400 py-2">
+              <p className="mb-1 text-[11px] uppercase text-gray-500">Forma de pago</p>
+              <ul className="space-y-0.5 text-xs">
+                {factura.pagos.map((p, i) => (
+                  <li key={i} className="flex justify-between">
+                    <span>
+                      {TIPO_PAGO_LABELS[p.tipo_pago]} {p.moneda === 'usd' ? 'US$' : 'Bs'}
+                      {p.numero_referencia ? ` · Ref. ${p.numero_referencia}` : ''}
+                    </span>
+                    <span className="font-medium">{formatCents(p.monto, p.moneda)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {recordatorio && (
+              <div className="border-t border-dashed border-gray-400 py-2 text-center">
+                <p className="text-xs font-semibold text-gray-800">{recordatorio}</p>
+              </div>
+            )}
+
+            <div className="border-t border-dashed border-gray-400 py-2">
+              <p className="mb-1 text-[11px] uppercase text-gray-500">NOTA:</p>
+              <div className="space-y-2">
+                <div className="border-b border-dotted border-gray-300" />
+                <div className="border-b border-dotted border-gray-300" />
+                <div className="border-b border-dotted border-gray-300" />
+              </div>
+            </div>
+
+            <div className="border-t border-dashed border-gray-400 py-2">
+              <p className="mb-1 text-[11px] uppercase text-gray-500">DEVOLUCION:</p>
+              {factura.devoluciones.length === 0 ? (
+                <div className="space-y-2">
+                  <div className="border-b border-dotted border-gray-300" />
+                  <div className="border-b border-dotted border-gray-300" />
+                </div>
+              ) : (
+                <>
+                  {factura.devoluciones.map((dev) => (
+                    <div key={dev.id} className="mb-1.5 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">
+                          Devuelto el {dev.fecha_devolucion.slice(0, 10)}
+                          {dev.motivo ? ` · ${dev.motivo}` : ''}
+                        </span>
+                        <span className="font-semibold text-red-600">-{formatUsdCents(dev.monto)}</span>
+                      </div>
+                      {dev.detalle.length > 0 && (
+                        <ul className="ml-3 mt-0.5 space-y-0.5 border-l border-red-100 pl-3 text-[11px] text-gray-500">
+                          {dev.detalle.map((p) => (
+                            <li key={p.producto_id} className="flex justify-between gap-4">
+                              <span>{p.nombre} × {p.cantidad}</span>
+                              <span>{formatUsdCents(p.subtotal)}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  ))}
+                  <div className="mt-1 flex justify-between text-xs font-bold">
+                    <span>Saldo final de la venta (neto)</span>
+                    <span>
+                      {formatUsdCents(
+                        Math.max(
+                          factura.total - factura.devoluciones.reduce((s, d) => s + d.monto, 0),
+                          0,
+                        ),
+                      )}
+                    </span>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {factura.tasa_cambio > 0 && (
+              <p className="pb-1 text-center text-[11px] tracking-wide">
+                Tasa: Bs {factura.tasa_cambio.toFixed(2)} por US$ 1
+              </p>
+            )}
+            <p className="pb-1 text-center text-[11px] tracking-wide font-semibold">
+              Gracias por su compra!!
+            </p>
+          </div>
+        </div>
+
+        <ConfigurarImpresoraModal
+          open={configAbierto}
+          onClose={() => setConfigAbierto(false)}
+          onGuardado={(v) => {
+            setTicketMsg({ tipo: 'ok', texto: `Impresora configurada: ${v}` });
+            enviarTicket();
+          }}
+        />
+      </div>
+    </div>,
+    document.body,
+  );
+}

@@ -1,0 +1,44 @@
+import { create } from 'zustand';
+import type { Caja, Usuario } from '@tienda/core';
+import { cajaAbierta, getTasaCambio } from '../services/db';
+import { trazar } from '../services/logging';
+
+interface SesionState {
+  operador: Usuario | null;
+  caja: Caja | null;
+  tasa: number;
+  inicializado: boolean;
+  login: (usuario: Usuario) => Promise<void>;
+  logout: () => void;
+  refrescar: () => Promise<void>;
+  setCaja: (caja: Caja | null) => void;
+  setTasaLocal: (tasa: number) => void;
+}
+
+/** Estado global de la sesión: operador, caja abierta y tasa de cambio vigente. */
+export const useSesion = create<SesionState>((set) => ({
+  operador: null,
+  caja: null,
+  tasa: 1,
+  inicializado: false,
+
+  /** Inicia turno y re-sincroniza la realidad del backend (caja abierta + tasa). */
+  login: async (usuario) => {
+    trazar('login', `inicio de ${usuario.nombre}`);
+    set({ operador: usuario });
+    const [caja, tasa] = await Promise.all([cajaAbierta(), getTasaCambio()]);
+    trazar('login', `listo caja=${caja ? 'abierta' : 'cerrada'} tasa=${tasa}`);
+    set({ caja, tasa, inicializado: true });
+  },
+
+  /** Cierra la sesión del operador pero NO la caja: esta pertenece al backend. */
+  logout: () => set({ operador: null }),
+
+  refrescar: async () => {
+    const [caja, tasa] = await Promise.all([cajaAbierta(), getTasaCambio()]);
+    set({ caja, tasa, inicializado: true });
+  },
+
+  setCaja: (caja) => set({ caja }),
+  setTasaLocal: (tasa) => set({ tasa }),
+}));
