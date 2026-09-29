@@ -1,0 +1,26 @@
+{
+  "name": "@tienda/db",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./build/main.cjs",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "bundle": "node scripts/bundle.mjs",
+    "build": "node scripts/bundle.mjs --minify",
+    "start": "node build/main.cjs",
+    "dev": "node scripts/bundle.mjs && node build/main.cjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "build:sea": "node scripts/build-sea.mjs"
+  },
+  "dependencies": {
+    "@tienda/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "esbuild": "^0.21.5",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}

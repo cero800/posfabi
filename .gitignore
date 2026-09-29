@@ -2,18 +2,20 @@
 node_modules/
 
 # Builds
+build/
 dist/
+packages/*/build/
 packages/*/dist/
 packages/desktop/src-tauri/target/
 packages/desktop/src-tauri/gen/
+packages/desktop/src-tauri/binaries/
+
+# Node SEA (artefactos de compilación)
+packages/db/bin/
+packages/db/sea-config.json
+packages/db/sea-prep.blob
 
 # Logs y archivos del sistema
 *.log
 .DS_Store
 *.local
-
-# Sidecars de graphify específicos de la máquina
-graphify-out/.graphify_python
-graphify-out/.graphify_root
-graphify-out/cache/
-graphify-out/.graphify_*

@@ -10,7 +10,11 @@
     "dev:desktop": "pnpm --filter @tienda/desktop dev",
     "build:core": "pnpm --filter @tienda/core build",
     "build:desktop": "pnpm --filter @tienda/desktop build",
-    "clean": "pnpm -r exec rm -rf node_modules dist .turbo"
+    "build:backend": "pnpm --filter @tienda/db build",
+    "build:sea": "pnpm --filter @tienda/db build:sea",
+    "typecheck": "pnpm --filter @tienda/core build && pnpm --filter @tienda/db typecheck && pnpm --filter @tienda/desktop exec tsc --noEmit",
+    "test": "pnpm --filter @tienda/db test && pnpm --filter @tienda/desktop test",
+    "clean": "pnpm -r exec rm -rf node_modules dist build .turbo"
   },
   "devDependencies": {
     "typescript": "^5.2.2"
