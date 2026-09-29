@@ -10,7 +10,8 @@ import os from 'node:os';
 import path from 'node:path';
 
 import type { Rutas } from './paths.js';
-import { enMemoria, hoy, qUno } from './db.js';
+import { abrir, enMemoria, hoy, qUno } from './db.js';
+import { escribirConfig as escribirConfigReal } from './config.js';
 import { PIN_ADMIN_POR_DEFECTO } from './seed.js';
 
 /** Base nueva en memoria con el esquema aplicado. */
@@ -139,6 +140,11 @@ export function config(db: DatabaseSync, clave: string): string | null {
     ?.valor ?? null;
 }
 
+/** Escribe una clave de configuración. */
+export function escribirConfig(db: DatabaseSync, clave: string, valor: string | null): void {
+  escribirConfigReal(db, clave, valor);
+}
+
 // `hoy` se reexporta desde `db.ts` para que las pruebas y el código usen la
 // misma lectura de la fecha. Un `new Date()` en una prueba archivaría la venta
 // en el día UTC, que a las nueve de la noche en Caracas ya es mañana, y el
@@ -172,4 +178,31 @@ export function mkdirsTmp(rutas: Rutas): void {
   for (const dir of [rutas.dataDir, rutas.documentDir, rutas.tempDir, rutas.scriptsDir]) {
     fs.mkdirSync(dir, { recursive: true });
   }
+}
+
+/**
+ * Una base de verdad en un archivo, dentro de una carpeta temporal.
+ *
+ * Casi todas las pruebas usan la base en memoria, que va más rápido y no deja
+ * archivos. Pero hay cosas que no se pueden probar en memoria: el modo WAL solo
+ * existe en disco, y sin él no hay `-wal` que volcar, así que un backup podría
+ * "funcionar" en la prueba y perder datos en la tienda sin que nada lo note.
+ * Para esas hace falta esta.
+ *
+ * Devuelve la base y las rutas, y también la raíz para borrarla al terminar.
+ */
+export function bdEnDisco(): { db: DatabaseSync; rutas: Rutas; raiz: string } {
+  const { rutas, raiz } = rutasTemporales();
+  mkdirsTmp(rutas);
+  return { db: abrir(rutas.dbPath), rutas, raiz };
+}
+
+/** Cierra una base y borra la carpeta temporal que la contiene. */
+export function limpiarDisco(db: DatabaseSync, raiz: string): void {
+  try {
+    db.close();
+  } catch {
+    // Una base que no se pudo cerrar no puede impedir que se borre la carpeta.
+  }
+  fs.rmSync(raiz, { recursive: true, force: true });
 }

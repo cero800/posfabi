@@ -89,6 +89,22 @@ export const stockInsuficiente = (nombre: string, disponible: number, unidad?: s
 export const sistema = (mensaje: string): AppError =>
   new AppError(CODIGO_ERROR.sistema, mensaje);
 
+/**
+ * Fallo de escritura en la impresora.
+ *
+ * A diferencia de `sistema`, este dice que la computadora está bien y lo que
+ * falla está al otro lado: apagada, sin conectar, con el controlador
+ * equivocado. El mensaje siempre dice qué revisar, porque lo lee el cajero de
+ * pie en el mostrador con un cliente esperando, y "Acceso denegado" no le dice
+ * que revise el cable.
+ */
+export const impresora = (mensaje: string): AppError =>
+  new AppError(CODIGO_ERROR.impresora, mensaje);
+
+/** No hay ninguna impresora configurada todavía. */
+export const impresoraNoConfigurada = (mensaje: string): AppError =>
+  new AppError(CODIGO_ERROR.impresora_no_configurada, mensaje);
+
 // `node:sqlite` lanza errores con este texto ante una restricción UNIQUE.
 const ES_UNIQUE = /UNIQUE constraint failed/i;
 // Violación de clave foránea.
