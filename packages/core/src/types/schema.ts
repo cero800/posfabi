@@ -126,6 +126,11 @@ export interface Cliente {
   direccion: string | null;
   dias_credito: number;
   limite_credito: number;
+  /**
+   * `true` solo para el cliente Mostrador. La interfaz lo usa para no ofrecer
+   * crédito ni pedirle datos a quien compra sin identificación.
+   */
+  es_mostrador: boolean;
   activo: boolean;
   creado_en: string | null;
 }
@@ -141,7 +146,6 @@ export interface ClienteInput {
   limite_credito: number;
   activo: boolean;
 }
-
 export interface Producto {
   id: number;
   codigo: string;
@@ -389,6 +393,8 @@ export interface UsuarioInput {
   nombre: string;
   rol: Rol;
   activo: boolean;
+  /** Si se omite, el backend asigna el PIN inicial. */
+  pin?: string | null;
 }
 
 /** Datos del primer arranque: crear/ajustar el administrador y su PIN. */

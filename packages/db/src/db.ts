@@ -23,7 +23,7 @@ import path from 'node:path';
 import { DatabaseSync, type SQLInputValue } from 'node:sqlite';
 
 import { SCHEMA_SQL, SCHEMA_VERSION } from './schema.js';
-import { noEncontrado } from './errors.js';
+import { noEncontrado, normalizarError } from './errors.js';
 import { asegurarDataDir, RUTAS } from './paths.js';
 
 //---------------------------------------------------------------------------
@@ -178,15 +178,30 @@ function revertir(db: DatabaseSync, anidada: boolean, punto: string): void {
 // el dominio declara esa forma con el parámetro de tipo, igual que en Rust cada
 // `query_row` declaraba el tipo de su closure. El casteo es inevitable, pero
 // queda en un solo lugar y no se repite por todo el código.
+//
+// Además, todos pasan por `normalizarError`. Es el único embudo por donde sale
+// SQL hacia el dominio, así que es el punto donde se traduce el texto técnico de
+// SQLite ("UNIQUE constraint failed: productos.codigo_barras") al mensaje y al
+// código que la interfaz entiende. Normalizar aquí en vez de en el llamador
+// significa que ningún error crudo se escapa por un `catch` olvidado, y que los
+// datos no tienen que acordarse de envolver cada consulta.
 
 /** Todas las filas de una consulta. */
 export function qTodos<T>(db: DatabaseSync, sql: string, ...params: SQLInputValue[]): T[] {
-  return db.prepare(sql).all(...params) as T[];
+  try {
+    return db.prepare(sql).all(...params) as T[];
+  } catch (e) {
+    throw normalizarError(e);
+  }
 }
 
 /** La primera fila, o `null` si no hay ninguna. */
 export function qUno<T>(db: DatabaseSync, sql: string, ...params: SQLInputValue[]): T | null {
-  return (db.prepare(sql).get(...params) as T | undefined) ?? null;
+  try {
+    return (db.prepare(sql).get(...params) as T | undefined) ?? null;
+  } catch (e) {
+    throw normalizarError(e);
+  }
 }
 
 /** La primera fila, o error `no_encontrado` con el nombre de la entidad. */
@@ -207,13 +222,21 @@ export function ejecutar(
   sql: string,
   ...params: SQLInputValue[]
 ): { cambios: number; ultimoId: number } {
-  const r = db.prepare(sql).run(...params);
-  return { cambios: Number(r.changes), ultimoId: Number(r.lastInsertRowid) };
+  try {
+    const r = db.prepare(sql).run(...params);
+    return { cambios: Number(r.changes), ultimoId: Number(r.lastInsertRowid) };
+  } catch (e) {
+    throw normalizarError(e);
+  }
 }
 
 /** Ejecuta varias sentencias seguidas (DDL, scripts). */
 export function ejecutarScript(db: DatabaseSync, sql: string): void {
-  db.exec(sql);
+  try {
+    db.exec(sql);
+  } catch (e) {
+    throw normalizarError(e);
+  }
 }
 
 export { DatabaseSync };

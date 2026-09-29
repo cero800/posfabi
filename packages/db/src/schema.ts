@@ -29,12 +29,9 @@ CREATE TABLE IF NOT EXISTS categorias (
 CREATE UNIQUE INDEX IF NOT EXISTS idx_categorias_nombre_hermano
     ON categorias(nombre, IFNULL(parent_id, 0));
 
--- Cliente del negocio: persona o empresa. es_mostrador marca el cliente
--- Mostrador (consumidor anónimo), contra quien se registra la mayoría de las
--- ventas de mostrador y que no admite crédito.
 CREATE TABLE IF NOT EXISTS clientes (
     id             INTEGER PRIMARY KEY AUTOINCREMENT,
-    documento      TEXT    UNIQUE NOT NULL,   -- cédula, RIF o NIT
+    documento      TEXT    NOT NULL,   -- cédula, RIF o NIT
     nombre         TEXT    NOT NULL,
     razon_social   TEXT,
     telefono       TEXT,
@@ -42,14 +39,22 @@ CREATE TABLE IF NOT EXISTS clientes (
     direccion      TEXT,
     dias_credito   INTEGER NOT NULL DEFAULT 0,   -- 0 = pago de contado
     limite_credito INTEGER NOT NULL DEFAULT 0,   -- centavos US$; 0 = sin límite
-    es_mostrador   INTEGER NOT NULL DEFAULT 0,
+    es_mostrador   INTEGER NOT NULL DEFAULT 0,   -- 1 = Mostrador; no admite crédito
     activo         INTEGER NOT NULL DEFAULT 1,
     creado_en      DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+-- El borrado de clientes y productos es lógico (activo = 0), porque el
+-- historial de ventas los referencia para siempre. Por eso los UNIQUE solo
+-- abarcan los activos: si no, desactivar "V-1" dejaría ese documento
+-- bloqueado y no se podría volver a dar de alta el mismo cliente.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_clientes_documento
+    ON clientes(documento)
+    WHERE activo = 1;
+
 CREATE TABLE IF NOT EXISTS productos (
     id                  INTEGER PRIMARY KEY AUTOINCREMENT,
-    codigo              TEXT    UNIQUE NOT NULL,
+    codigo              TEXT    NOT NULL,
     codigo_barras       TEXT,
     nombre              TEXT    NOT NULL,
     descripcion         TEXT,
@@ -62,9 +67,13 @@ CREATE TABLE IF NOT EXISTS productos (
     creado_en           DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_productos_codigo
+    ON productos(codigo)
+    WHERE activo = 1;
+
 CREATE UNIQUE INDEX IF NOT EXISTS idx_productos_codigo_barras
     ON productos(codigo_barras)
-    WHERE codigo_barras IS NOT NULL AND codigo_barras <> '';
+    WHERE activo = 1 AND codigo_barras IS NOT NULL AND codigo_barras <> '';
 
 CREATE INDEX IF NOT EXISTS idx_productos_categoria ON productos(categoria_id);
 

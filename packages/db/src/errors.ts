@@ -69,10 +69,10 @@ export const validacion = (mensaje: string): AppError =>
 export const noEncontrado = (entidad: string): AppError =>
   new AppError(CODIGO_ERROR.no_encontrado, `${entidad} no encontrado`);
 
-export const stockInsuficiente = (nombre: string, disponible: number): AppError =>
+export const stockInsuficiente = (nombre: string, disponible: number, unidad?: string): AppError =>
   new AppError(
     CODIGO_ERROR.stock_insuficiente,
-    `Stock insuficiente de "${nombre}": quedan ${disponible}`,
+    `Stock insuficiente de "${nombre}": quedan ${disponible}${unidad ? ` ${unidad}` : ''}`,
   );
 
 export const sistema = (mensaje: string): AppError =>

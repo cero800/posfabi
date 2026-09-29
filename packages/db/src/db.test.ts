@@ -16,6 +16,23 @@ import {
   versionEsquema,
 } from './db.js';
 import { SCHEMA_VERSION } from './schema.js';
+import { CODIGO_ERROR } from './errors.js';
+
+/**
+ * El código de error de la llamada, o la AssertionError si no falló.
+ *
+ * Estas pruebas ya no comprueban el texto crudo de SQLite: los helpers de
+ * consulta lo traducen a un `AppError`, y el texto técnico es justamente lo que
+ * no debe assertionar el código de negocio. Lo que importa es el código.
+ */
+function codigoDeError(fn: () => unknown): string {
+  try {
+    fn();
+  } catch (e) {
+    if (e && typeof e === 'object' && 'codigo' in e) return String((e as { codigo: string }).codigo);
+  }
+  throw new Error('se esperaba un error y no se lanzó');
+}
 
 /** Todas las tablas que el dominio necesita. */
 const TABLAS = [
@@ -72,13 +89,16 @@ describe('esquema', () => {
   it('activa las claves foráneas', () => {
     const db = enMemoria();
     // Con foreign_keys apagado este INSERT dejaría una venta colgada de una
-    // cliente inexistente sin error; con la pragma activa debe fallar.
-    expect(() =>
-      ejecutar(
-        db,
-        "INSERT INTO ventas (cliente_id, numero_factura, tipo, fecha, subtotal, descuento, impuesto, total) VALUES (999, 1, 'contado', '2026-01-01', 0, 0, 0, 0)",
+    // cliente inexistente sin error; con la pragma activa debe fallar, y el
+    // fallo llega ya traducido.
+    expect(
+      codigoDeError(() =>
+        ejecutar(
+          db,
+          "INSERT INTO ventas (cliente_id, numero_factura, tipo, fecha, subtotal, descuento, impuesto, total) VALUES (999, 1, 'contado', '2026-01-01', 0, 0, 0, 0)",
+        ),
       ),
-    ).toThrow(/FOREIGN KEY/);
+    ).toBe(CODIGO_ERROR.validacion);
   });
 
   it('rechaza una base de un esquema más nuevo que el que entiende la app', () => {
@@ -98,17 +118,21 @@ describe('restricciones de integridad', () => {
   it('no admite dos productos con el mismo código', () => {
     const db = enMemoria();
     ejecutar(db, 'INSERT INTO productos (codigo, nombre) VALUES (?, ?)', 'P1', 'Cuaderno');
-    expect(() =>
-      ejecutar(db, 'INSERT INTO productos (codigo, nombre) VALUES (?, ?)', 'P1', 'Otro'),
-    ).toThrow(/UNIQUE/);
+    expect(
+      codigoDeError(() =>
+        ejecutar(db, 'INSERT INTO productos (codigo, nombre) VALUES (?, ?)', 'P1', 'Otro'),
+      ),
+    ).toBe(CODIGO_ERROR.duplicado);
   });
 
   it('no admite dos clientes con el mismo documento', () => {
     const db = enMemoria();
     ejecutar(db, 'INSERT INTO clientes (documento, nombre) VALUES (?, ?)', 'V-1', 'Ana');
-    expect(() =>
-      ejecutar(db, 'INSERT INTO clientes (documento, nombre) VALUES (?, ?)', 'V-1', 'Otra'),
-    ).toThrow(/UNIQUE/);
+    expect(
+      codigoDeError(() =>
+        ejecutar(db, 'INSERT INTO clientes (documento, nombre) VALUES (?, ?)', 'V-1', 'Otra'),
+      ),
+    ).toBe(CODIGO_ERROR.duplicado);
   });
 
   it('admite productos sin código de barras repetido', () => {
@@ -122,17 +146,19 @@ describe('restricciones de integridad', () => {
   it('rechaza un código de barras repetido entre dos productos', () => {
     const db = enMemoria();
     ejecutar(db, 'INSERT INTO productos (codigo, codigo_barras, nombre) VALUES (?,?,?)', 'P1', '7501', 'A');
-    expect(() =>
-      ejecutar(db, 'INSERT INTO productos (codigo, codigo_barras, nombre) VALUES (?,?,?)', 'P2', '7501', 'B'),
-    ).toThrow(/UNIQUE/);
+    expect(
+      codigoDeError(() =>
+        ejecutar(db, 'INSERT INTO productos (codigo, codigo_barras, nombre) VALUES (?,?,?)', 'P2', '7501', 'B'),
+      ),
+    ).toBe(CODIGO_ERROR.duplicado);
   });
 
   it('no admite dos categorías con el mismo nombre entre hermanas', () => {
     const db = enMemoria();
     ejecutar(db, 'INSERT INTO categorias (nombre) VALUES (?)', 'Oficina');
-    expect(() => ejecutar(db, 'INSERT INTO categorias (nombre) VALUES (?)', 'Oficina')).toThrow(
-      /UNIQUE/,
-    );
+    expect(
+      codigoDeError(() => ejecutar(db, 'INSERT INTO categorias (nombre) VALUES (?)', 'Oficina')),
+    ).toBe(CODIGO_ERROR.duplicado);
   });
 
   it('sí admite el mismo nombre bajo padres distintos', () => {
