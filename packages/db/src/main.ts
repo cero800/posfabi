@@ -10,9 +10,10 @@
 //   node build/main.cjs --http --port 4000
 //   node build/main.cjs --http --host 0.0.0.0    ← abre la base a la red; avisará
 //
-// Las rutas llegan por variables de entorno (`TIENDA_DATA_DIR`, `TIENDA_DOC_DIR`,
-// `TIENDA_SCRIPTS_DIR`); ver `paths.ts`. Sin ellas se usan los valores por
-// defecto de Windows, que es lo que hace que el modo `--http` funcione en Linux.
+// Las rutas llegan por variables de entorno (`TIENDA_DATA_DIR`, `TIENDA_DOC_DIR`),
+// que pone el comando `rutas_app` del shell de Tauri; ver `paths.ts`. Sin ellas
+// se usan los valores por defecto de Windows, que es lo que hace que el modo
+// `--http` funcione en Linux.
 //
 // ## Arranque
 //

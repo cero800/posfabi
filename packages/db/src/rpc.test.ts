@@ -37,7 +37,6 @@ const RUTAS_FALSAS: Rutas = {
   documentDir: '/tmp/no-se-usa',
   tempDir: '/tmp',
   dbPath: '/tmp/no-se-usa/tienda.db',
-  scriptsDir: '/tmp/no-se-usa',
 };
 
 function ctxCon(): Contexto {

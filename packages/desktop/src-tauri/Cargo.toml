@@ -1,12 +1,12 @@
 [package]
-name = "panaderia-desktop"
+name = "tienda-desktop"
 version = "1.0.17"
-description = "Sistema POS - Panadería"
+description = "POS de papelería y tienda general"
 authors = ["you"]
 edition = "2021"
 
 [lib]
-name = "panaderia_desktop_lib"
+name = "tienda_desktop_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
@@ -14,10 +14,14 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = ["devtools"] }
+# Único plugin: lanzar el backend como sidecar y hablarle por stdio.
+# Toda la lógica está en `packages/db`; este crate no tiene más.
+tauri-plugin-shell = "2"
 serde = { version = "1", features = ["derive"] }
+# Solo para los tests: comprueban que `rutas_app` serializa los campos con el
+# nombre que el frontend espera. En el binario no se usa.
+[dev-dependencies]
 serde_json = "1"
-rusqlite = { version = "0.31", features = ["bundled"] }
-base64 = "0.22"
 
 [profile.release]
 panic = "abort"

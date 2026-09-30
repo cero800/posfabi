@@ -26,8 +26,6 @@ export interface Rutas {
   tempDir: string;
   /** Ruta completa de la base SQLite. */
   dbPath: string;
-  /** Carpeta de `imprimir.ps1` y demás recursos auxiliares. */
-  scriptsDir: string;
 }
 
 /** `%APPDATA%\com.tienda.pos` — el mismo lugar donde Tauri guarda los datos. */
@@ -42,9 +40,8 @@ export function documentDirPorDefecto(env: NodeJS.ProcessEnv = process.env): str
 }
 
 /**
- * Resuelve las rutas desde el entorno. Las variables que define el shell son
- * `TIENDA_DATA_DIR` y `TIENDA_DOC_DIR`; `TIENDA_SCRIPTS_DIR` apunta a los
- * recursos empaquetados junto al ejecutable.
+ * Resuelve las rutas desde el entorno. Las dos variables que define el shell
+ * Rust son `TIENDA_DATA_DIR` y `TIENDA_DOC_DIR`; ver `src-tauri/src/lib.rs`.
  */
 export function rutasDesdeEnv(env: NodeJS.ProcessEnv = process.env): Rutas {
   const dataDir = env.TIENDA_DATA_DIR || dataDirPorDefecto(env);
@@ -55,8 +52,6 @@ export function rutasDesdeEnv(env: NodeJS.ProcessEnv = process.env): Rutas {
     documentDir,
     tempDir: env.TEMP || env.TMP || os.tmpdir(),
     dbPath: path.join(dataDir, NOMBRE_BASE_DATOS),
-    // Junto al ejecutable: en un build empaquetado es el directorio de Tauri.
-    scriptsDir: env.TIENDA_SCRIPTS_DIR || path.dirname(process.execPath),
   };
 }
 

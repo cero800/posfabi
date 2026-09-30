@@ -168,14 +168,13 @@ export function rutasTemporales(): { rutas: Rutas; raiz: string } {
       documentDir: path.join(raiz, 'documentos'),
       tempDir: path.join(raiz, 'temp'),
       dbPath: path.join(raiz, 'datos', 'tienda.db'),
-      scriptsDir: path.join(raiz, 'scripts'),
     },
   };
 }
 
 /** Crea todas las carpetas que declara un objeto `Rutas`. */
 export function mkdirsTmp(rutas: Rutas): void {
-  for (const dir of [rutas.dataDir, rutas.documentDir, rutas.tempDir, rutas.scriptsDir]) {
+  for (const dir of [rutas.dataDir, rutas.documentDir, rutas.tempDir]) {
     fs.mkdirSync(dir, { recursive: true });
   }
 }

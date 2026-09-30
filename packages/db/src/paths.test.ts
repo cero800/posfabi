@@ -42,14 +42,6 @@ describe('rutasDesdeEnv', () => {
     expect(rutasDesdeEnv({ TEMP: 'C:\\Tmp' }).tempDir).toBe('C:\\Tmp');
     expect(rutasDesdeEnv({ TMP: 'C:\\Tmp2' }).tempDir).toBe('C:\\Tmp2');
   });
-
-  it('mira junto al ejecutable los scripts auxiliares', () => {
-    expect(rutasDesdeEnv({ TIENDA_SCRIPTS_DIR: 'C:\\App\\resources' }).scriptsDir).toBe(
-      'C:\\App\\resources',
-    );
-    // Sin la variable, se supone que están al lado del binario.
-    expect(rutasDesdeEnv({}).scriptsDir).toBe(path.dirname(process.execPath));
-  });
 });
 
 describe('valores por defecto sin variables de Windows', () => {
