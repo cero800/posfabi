@@ -1,7 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Boxes, Hammer, MinusCircle, Plus, Settings2 } from 'lucide-react';
+import { Boxes, MinusCircle, PackagePlus, Plus, Settings2 } from 'lucide-react';
 import type { StockItem } from '@tienda/core';
-import { listarProductos, listarStock, registrarAjuste, registrarMerma, registrarProduccion } from '../services/db';
+import {
+  listarProductos,
+  listarStock,
+  registrarAjuste,
+  registrarEntradaMercancia,
+  registrarMerma,
+} from '../services/db';
 import { parseCentsInput } from '../lib/format';
 import type { Producto } from '@tienda/core';
 import { useSesion } from '../store/sesion';
@@ -16,7 +22,7 @@ import { EmptyState, PageHeader } from '../components/ui/Page';
 import { PageLoader } from '../components/ui/Spinner';
 import { DatePicker } from '../components/ui/DatePicker';
 
-type Accion = 'produccion' | 'merma' | 'ajuste';
+type Accion = 'entrada' | 'merma' | 'ajuste';
 
 export default function InventarioPage() {
   const operadorId = useSesion((s) => s.operador?.id ?? 0);
@@ -51,7 +57,7 @@ export default function InventarioPage() {
     setMotivo('');
     setFecha(new Date().toISOString().slice(0, 10));
     setError(null);
-    if (a === 'produccion' && productoIdDefault != null) {
+    if (a === 'entrada' && productoIdDefault != null) {
       const p = productos.find((x) => x.id === productoIdDefault);
       if (p) setCosto((p.precio_base / 100).toFixed(2));
     }
@@ -59,7 +65,7 @@ export default function InventarioPage() {
 
   const elegirProducto = (id: string) => {
     setProductoId(id);
-    if (accion === 'produccion') {
+    if (accion === 'entrada') {
       const p = productos.find((x) => x.id === Number(id));
       if (p) setCosto((p.precio_base / 100).toFixed(2));
     }
@@ -80,8 +86,8 @@ export default function InventarioPage() {
     setGuardando(true);
     setError(null);
     try {
-      if (accion === 'produccion') {
-        await registrarProduccion({
+      if (accion === 'entrada') {
+        await registrarEntradaMercancia({
           producto_id: pid,
           cantidad: cant,
           costo_unitario: parseCentsInput(costo, 'usd') ?? 0,
@@ -126,8 +132,8 @@ export default function InventarioPage() {
                 </Button>
               </>
             )}
-            <Button onClick={() => abrir('produccion')}>
-              <Plus className="h-4 w-4" /> Producción
+            <Button onClick={() => abrir('entrada')}>
+              <Plus className="h-4 w-4" /> Recibir mercancía
             </Button>
           </>
         }
@@ -170,9 +176,14 @@ export default function InventarioPage() {
                     </Badge>
                   </Td>
                   <Td className="text-right">
-                    <Button variant="ghost" size="sm" onClick={() => abrir('produccion', s.producto_id)}>
-                      <Hammer className="h-4 w-4" />
-                      <span className="ml-1">Producir</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => abrir('entrada', s.producto_id)}
+                      aria-label={`Recibir mercancía de ${s.nombre}`}
+                    >
+                      <PackagePlus className="h-4 w-4" />
+                      <span className="ml-1"> Recibir</span>
                     </Button>
                   </Td>
                 </tr>
@@ -185,7 +196,7 @@ export default function InventarioPage() {
       <Modal
         open={accion != null}
         title={
-          accion === 'produccion' ? 'Registrar producción' : accion === 'merma' ? 'Registrar merma' : 'Ajuste de inventario'
+          accion === 'entrada' ? 'Recibir mercancía' : accion === 'merma' ? 'Registrar merma' : 'Ajuste de inventario'
         }
         onClose={() => setAccion(null)}
         footer={
@@ -224,7 +235,7 @@ export default function InventarioPage() {
                 hint={accion === 'ajuste' ? 'Negativo para restar' : undefined}
               />
             </div>
-            {accion === 'produccion' && (
+            {accion === 'entrada' && (
               <div className="flex-1">
                 <Input
                   label="Costo unitario (US$)"
@@ -238,19 +249,19 @@ export default function InventarioPage() {
             )}
           </div>
 
-          {accion === 'produccion' && (
+          {accion === 'entrada' && (
             <div>
               <span className="mb-1 block text-sm font-medium text-gray-700">Fecha</span>
-              <DatePicker value={fecha} onChange={setFecha} aria-label="Fecha de producción" />
+              <DatePicker value={fecha} onChange={setFecha} aria-label="Fecha de la entrada" />
             </div>
           )}
 
-          {accion !== 'produccion' && (
+          {accion !== 'entrada' && (
             <Input
               label={accion === 'merma' ? 'Motivo *' : 'Motivo'}
               value={motivo}
               onChange={(e) => setMotivo(e.target.value)}
-              placeholder="Ej.: pan quemado"
+              placeholder="Ej.: rotura de empaque"
             />
           )}
         </div>

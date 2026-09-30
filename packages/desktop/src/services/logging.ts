@@ -1,9 +1,18 @@
-// Registro de errores del frontend en `app_data/errores.log` a través de Tauri
-// y en memoria para mostrarlos en pantalla (OverlayErrores). Evita recursión:
-// solo invoca el backend, no toca consola.
+// Registro de errores del frontend en dos sitios: en memoria, para mostrarlos en
+// pantalla (`OverlayErrores`), y en `errores.log`, dentro de la carpeta de datos
+// de la app.
+//
+// ## Por qué no se registra a sí mismo
+//
+// Cuando algo falla en la interfaz, este módulo llama al backend para escribirlo
+// en el archivo. Si esa llamada falla —porque el backend está caído, que es
+// justo cuando más falta hace el registro— no se intenta volver a registrar
+// nada: se traga el error en silencio. Un registro que al fallar dispara otro
+// registro es un registro que tapa el problema que quería guardar.
 
 import { useSyncExternalStore } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+
+import { llamar } from './backend';
 
 export interface ErrorRegistro {
   id: number;
@@ -28,9 +37,14 @@ function agregarError(origen: string, error: unknown) {
     { id: siguienteId++, hora: new Date().toLocaleString(), origen, texto },
   ];
   notificar();
-  invoke('log_error', { origen, mensaje: texto }).catch(() => {
-    /* sin backend (navegador) no se registra */
-  });
+  // Lo que se guarda en el archivo es el mensaje y el origen, no la pila entera:
+  // en una app empaquetada y minificada la pila no dice gran cosa y ocupa más que
+  // el error. En pantalla sí se muestra todo.
+  llamar('log_error', { origen, mensaje: error instanceof Error ? error.message : texto }).catch(
+    () => {
+      /* si el backend no está, no hay dónde escribirlo */
+    },
+  );
 }
 
 export function iniciarRegistroErrores() {
@@ -61,8 +75,8 @@ export function reportarError(origen: string, error: unknown) {
 }
 
 export function trazar(origen: string, mensaje: string): void {
-  invoke('log_evento', { origen, mensaje }).catch(() => {
-    /* sin backend (navegador) no se registra */
+  llamar('log_evento', { origen, mensaje }).catch(() => {
+    /* si el backend no está, no hay dónde escribirlo */
   });
 }
 

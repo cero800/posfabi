@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { registrarAjuste, registrarMerma, registrarProduccion } from '../services/db';
+import { registrarAjuste, registrarEntradaMercancia, registrarMerma } from '../services/db';
 import { useSesion } from '../store/sesion';
 import InventarioPage from './InventarioPage';
 
@@ -14,13 +14,13 @@ vi.mock('../services/db', () => ({
     { id: 1, codigo: 'P1', nombre: 'Pan Canilla', descripcion: null, unidad_medida: 'unidad', precio_base: 500, impuesto_porcentaje: 0, activo: true, creado_en: null },
     { id: 2, codigo: 'P2', nombre: 'Croissant', descripcion: null, unidad_medida: 'unidad', precio_base: 800, impuesto_porcentaje: 0, activo: true, creado_en: null },
   ]),
-  registrarProduccion: vi.fn(),
+  registrarEntradaMercancia: vi.fn(),
   registrarMerma: vi.fn(),
   registrarAjuste: vi.fn(),
 }));
 
 beforeEach(() => {
-  vi.mocked(registrarProduccion).mockReset();
+  vi.mocked(registrarEntradaMercancia).mockReset();
   vi.mocked(registrarMerma).mockReset();
   vi.mocked(registrarAjuste).mockReset();
   useSesion.setState({ operador: { id: 1, nombre: 'Ana', rol: 'admin', activo: true } });
@@ -34,13 +34,15 @@ describe('InventarioPage', () => {
     expect(screen.getByText(/stock agotado o negativo/)).toHaveTextContent('Croissant');
   });
 
-  it('registra producción con fecha y costo pre-cargado', async () => {
+  it('registra la recepción de mercancía con fecha y costo pre-cargado', async () => {
     const user = userEvent.setup();
-    vi.mocked(registrarProduccion).mockResolvedValue(undefined as never);
+    vi.mocked(registrarEntradaMercancia).mockResolvedValue(undefined as never);
     render(<InventarioPage />);
     await screen.findByText('Pan Canilla');
 
-    await user.click(screen.getByRole('button', { name: /Producción/ }));
+    // El botón de la cabecera. El de cada fila se llama «Recibir mercancía de X»,
+// así que un nombre exacto los distingue.
+await user.click(screen.getByRole('button', { name: 'Recibir mercancía' }));
     const dialog = screen.getByRole('dialog');
     await user.selectOptions(within(dialog).getByLabelText(/Producto/), '1');
     const costoInput = within(dialog).getByLabelText(/Costo unitario/) as HTMLInputElement;
@@ -50,7 +52,7 @@ describe('InventarioPage', () => {
     await user.type(costoInput, '1.2');
     await user.click(within(dialog).getByRole('button', { name: 'Guardar' }));
 
-    expect(registrarProduccion).toHaveBeenCalledWith(
+    expect(registrarEntradaMercancia).toHaveBeenCalledWith(
       expect.objectContaining({
         producto_id: 1,
         cantidad: 2.5,
@@ -61,12 +63,14 @@ describe('InventarioPage', () => {
     );
   });
 
-  it('pre-carga el costo unitario con el precio base al usar el botón Producir', async () => {
+  it('pre-carga el costo unitario con el precio base al usar el botón Recibir de la fila', async () => {
     const user = userEvent.setup();
     render(<InventarioPage />);
     await screen.findByText('Pan Canilla');
 
-    await user.click(screen.getAllByRole('button', { name: /Producir/ })[0]);
+    // El botón de la fila, no el de la cabecera: uno abre el formulario con el
+    // producto puesto y el otro con el primero de la lista.
+    await user.click(screen.getByRole('button', { name: 'Recibir mercancía de Pan Canilla' }));
     const dialog = screen.getByRole('dialog');
     expect((within(dialog).getByLabelText(/Producto/) as HTMLSelectElement).value).toBe('1');
     expect((within(dialog).getByLabelText(/Costo unitario/) as HTMLInputElement).value).toBe('5.00');

@@ -1,11 +1,6 @@
 import { useEffect, useState } from 'react';
-import {
-  IMPRESORA_TERMICA_KEY,
-  getConfig,
-  listarImpresoras,
-  probarImpresora,
-  setConfig,
-} from '../../services/db';
+import { IMPRESORA_TERMICA_KEY } from '@tienda/core';
+import { getConfig, listarImpresoras, probarImpresora, setConfig } from '../../services/db';
 import { Button } from './Button';
 import { Input } from './Input';
 import { Modal } from './Modal';

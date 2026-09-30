@@ -16,8 +16,9 @@
     "tauri:build": "tauri build"
   },
   "dependencies": {
-    "@tienda/core": "workspace:*",
     "@tauri-apps/api": "^2.0.0",
+    "@tauri-apps/plugin-shell": "^2.4.0",
+    "@tienda/core": "workspace:*",
     "exceljs": "^4.4.0",
     "jspdf": "^2.5.1",
     "lucide-react": "^0.300.0",
