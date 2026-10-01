@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { FileDown, Printer, Receipt, X } from 'lucide-react';
 import type { Factura, TicketInput } from '@tienda/core';
-import { TIPO_PAGO_LABELS } from '@tienda/core';
+import { TIPO_PAGO_LABELS, describirDestino } from '@tienda/core';
 import { formatCents, formatUsdCents } from '../../lib/format';
 import { calcularRecordatorio, leerRecordatorioDias } from '../../lib/factura';
 import { facturaPdfB64, nombreArchivoFactura } from '../../lib/facturaPdf';
@@ -343,8 +343,8 @@ export function FacturaModal({ factura, onClose }: Props) {
         <ConfigurarImpresoraModal
           open={configAbierto}
           onClose={() => setConfigAbierto(false)}
-          onGuardado={(v) => {
-            setTicketMsg({ tipo: 'ok', texto: `Impresora configurada: ${v}` });
+          onGuardado={(destino) => {
+            setTicketMsg({ tipo: 'ok', texto: `Impresora configurada: ${describirDestino(destino)}` });
             enviarTicket();
           }}
         />

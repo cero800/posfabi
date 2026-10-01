@@ -9,6 +9,31 @@
 // proyecto y arranca sobre una base nueva. Cada cambio futuro se resuelve con un
 // ALTER TABLE no destructivo y un PRAGMA user_version incremental.
 
+/**
+ * ## Las fechas de negocio van en hora local, no en UTC
+ *
+ * Dos columnas del esquema se llenan solas —`pagos.fecha_pago` y
+ * `devoluciones.fecha_devolucion`— y las dos usan
+ * `DEFAULT (datetime('now','localtime'))` en vez del `CURRENT_TIMESTAMP` de
+ * SQLite. La diferencia son las cuatro horas de la tarde, porque
+ * `CURRENT_TIMESTAMP` es UTC: un pago hecho a las nueve de la noche en Caracas
+ * quedaba con la fecha de mañana, no entraba en el resumen del día y —peor—
+ * `efectivoDelDia` no lo contaba en el efectivo esperado del cierre, así que el
+ * cierre de caja salía con un faltante exacto de lo cobrado en la tarde. Y como
+ * la tienda se cierra de noche, no era un caso raro.
+ *
+ * Las demás fechas de negocio (`ventas.fecha`, `entradas_mercancia.fecha`,
+ * `cajas.fecha`) no tienen valor por defecto a propósito: son `NOT NULL` y el
+ * código las escribe siempre con `HOY_SQL` (ver `db.ts`). Así no hay dos caminos
+ * que mantener parecidos ni una fila archivada en el día equivocado.
+ *
+ * Las columnas que no son fecha de negocio (`creado_en`, `actualizado_en`) sí
+ * quedan en UTC: son marcas técnicas y no las lee ningún filtro por día.
+ *
+ * La fecha del *nombre* de los respaldos también es UTC, y por otro motivo
+ * distinto —que el nombre ordene bien—, pero eso vive en `backup.ts`, no aquí.
+ */
+
 /** Versión actual del esquema (PRAGMA user_version). */
 export const SCHEMA_VERSION = 1;
 
@@ -179,7 +204,7 @@ CREATE TABLE IF NOT EXISTS pagos (
     tasa_cambio       REAL    NOT NULL DEFAULT 1,      -- Bs por 1 US$ (snapshot)
     numero_referencia TEXT,
     operador_id       INTEGER,
-    fecha_pago        DATETIME DEFAULT CURRENT_TIMESTAMP,
+    fecha_pago        DATETIME DEFAULT (datetime('now','localtime')),
     observaciones     TEXT,
     creado_en         DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (cliente_id) REFERENCES clientes(id),
@@ -201,7 +226,7 @@ CREATE TABLE IF NOT EXISTS devoluciones (
     motivo           TEXT,
     afecta_stock     INTEGER NOT NULL DEFAULT 1,
     operador_id      INTEGER,
-    fecha_devolucion DATETIME DEFAULT CURRENT_TIMESTAMP,
+    fecha_devolucion DATETIME DEFAULT (datetime('now','localtime')),
     FOREIGN KEY (cliente_id) REFERENCES clientes(id),
     FOREIGN KEY (venta_id)   REFERENCES ventas(id)  ON DELETE SET NULL
 );

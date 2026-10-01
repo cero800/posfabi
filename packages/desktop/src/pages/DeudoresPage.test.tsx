@@ -7,7 +7,7 @@ import DeudoresPage from './DeudoresPage';
 
 vi.mock('../services/db', () => ({
   estadoCuentaTodos: vi.fn().mockResolvedValue([
-    { cliente_id: 2, nombre: 'Café del Centro', total_facturado: 25000, total_pagado: 5000, saldo_pendiente: 20000, total_vencido: 15000, total_al_dia: 5000, dias_credito: 30 },
+    { cliente_id: 2, nombre: 'Distribuidora La Esquina', total_facturado: 25000, total_pagado: 5000, saldo_pendiente: 20000, total_vencido: 15000, total_al_dia: 5000, dias_credito: 30 },
   ]),
   estadoCuenta: vi.fn(),
   historialPagos: vi.fn().mockResolvedValue([
@@ -31,7 +31,7 @@ beforeEach(() => {
 describe('DeudoresPage', () => {
   it('lista deudores con vencido, plazo y saldo', async () => {
     render(<DeudoresPage />);
-    expect(await screen.findByText('Café del Centro')).toBeInTheDocument();
+    expect(await screen.findByText('Distribuidora La Esquina')).toBeInTheDocument();
     expect(screen.getByText('Vencido', { selector: 'span' })).toBeInTheDocument();
     expect(screen.queryByText('Al día')).not.toBeInTheDocument();
     expect(screen.getByText('Plazo: 30 días')).toBeInTheDocument();
@@ -41,10 +41,10 @@ describe('DeudoresPage', () => {
 
   it('marca Al día cuando no hay saldo vencido', async () => {
     vi.mocked(estadoCuentaTodos).mockResolvedValueOnce([
-      { cliente_id: 2, nombre: 'Café del Centro', total_facturado: 25000, total_pagado: 5000, saldo_pendiente: 20000, total_vencido: 0, total_al_dia: 20000, dias_credito: 30 },
+      { cliente_id: 2, nombre: 'Distribuidora La Esquina', total_facturado: 25000, total_pagado: 5000, saldo_pendiente: 20000, total_vencido: 0, total_al_dia: 20000, dias_credito: 30 },
     ] as never);
     render(<DeudoresPage />);
-    expect(await screen.findByText('Café del Centro')).toBeInTheDocument();
+    expect(await screen.findByText('Distribuidora La Esquina')).toBeInTheDocument();
     expect(screen.getByText('Al día')).toBeInTheDocument();
     expect(screen.queryByText('Vencido', { selector: 'span' })).not.toBeInTheDocument();
   });
@@ -52,7 +52,7 @@ describe('DeudoresPage', () => {
   it('muestra historial de pagos al seleccionar cliente', async () => {
     const user = userEvent.setup();
     render(<DeudoresPage />);
-    await user.click(await screen.findByText('Café del Centro'));
+    await user.click(await screen.findByText('Distribuidora La Esquina'));
     expect(await screen.findByText(/#3/)).toBeInTheDocument();
     expect(screen.getByText('Bs 50,00')).toBeInTheDocument();
   });
@@ -61,7 +61,7 @@ describe('DeudoresPage', () => {
     const user = userEvent.setup();
     vi.mocked(registrarAbono).mockResolvedValue(undefined as never);
     render(<DeudoresPage />);
-    await user.click(await screen.findByText('Café del Centro'));
+    await user.click(await screen.findByText('Distribuidora La Esquina'));
     await user.click(await screen.findByRole('button', { name: /Abono/ }));
 
     const dialog = screen.getByRole('dialog');
@@ -80,7 +80,7 @@ describe('DeudoresPage', () => {
     vi.mocked(registrarAbono).mockResolvedValue(undefined as never);
     useSesion.setState({ operador: { id: 1, nombre: 'Ana', rol: 'admin', activo: true }, tasa: 36.85 });
     render(<DeudoresPage />);
-    await user.click(await screen.findByText('Café del Centro'));
+    await user.click(await screen.findByText('Distribuidora La Esquina'));
     await user.click(await screen.findByRole('button', { name: /Abono/ }));
 
     const dialog = screen.getByRole('dialog');
@@ -110,7 +110,7 @@ describe('DeudoresPage', () => {
     const user = userEvent.setup();
     useSesion.setState({ operador: { id: 1, nombre: 'Ana', rol: 'admin', activo: true }, tasa: 1 });
     render(<DeudoresPage />);
-    await user.click(await screen.findByText('Café del Centro'));
+    await user.click(await screen.findByText('Distribuidora La Esquina'));
     await user.click(await screen.findByRole('button', { name: /Abono/ }));
 
     const dialog = screen.getByRole('dialog');
@@ -127,7 +127,7 @@ describe('DeudoresPage', () => {
     const user = userEvent.setup();
     useSesion.setState({ operador: { id: 1, nombre: 'Ana', rol: 'admin', activo: true }, tasa: 1 });
     render(<DeudoresPage />);
-    await user.click(await screen.findByText('Café del Centro'));
+    await user.click(await screen.findByText('Distribuidora La Esquina'));
     await user.click(await screen.findByRole('button', { name: /Abono/ }));
 
     const dialog = screen.getByRole('dialog');
@@ -141,7 +141,7 @@ describe('DeudoresPage', () => {
     const user = userEvent.setup();
     useSesion.setState({ operador: { id: 1, nombre: 'Ana', rol: 'admin', activo: true }, tasa: 1 });
     render(<DeudoresPage />);
-    await user.click(await screen.findByText('Café del Centro'));
+    await user.click(await screen.findByText('Distribuidora La Esquina'));
     await user.click(await screen.findByRole('button', { name: /Abono/ }));
 
     const dialog = screen.getByRole('dialog');
@@ -160,7 +160,7 @@ describe('DeudoresPage', () => {
     const user = userEvent.setup();
     useSesion.setState({ operador: { id: 1, nombre: 'Ana', rol: 'admin', activo: true }, tasa: 1 });
     render(<DeudoresPage />);
-    await user.click(await screen.findByText('Café del Centro'));
+    await user.click(await screen.findByText('Distribuidora La Esquina'));
     await user.click(await screen.findByRole('button', { name: /Abono/ }));
 
     const dialog = screen.getByRole('dialog');
@@ -174,7 +174,7 @@ describe('DeudoresPage', () => {
     ] as never);
     const user = userEvent.setup();
     render(<DeudoresPage />);
-    await user.click(await screen.findByText('Café del Centro'));
+    await user.click(await screen.findByText('Distribuidora La Esquina'));
     expect(await screen.findByRole('button', { name: /Devolver factura 3/ })).toBeInTheDocument();
     expect(screen.getByText('Crédito')).toBeInTheDocument();
     expect(screen.getByText('2026-09-01')).toBeInTheDocument();
@@ -186,14 +186,14 @@ describe('DeudoresPage', () => {
       { venta_id: 10, numero_factura: 3, tipo: 'credito', fecha: '2026-09-04', total: 1000, devuelto: 0 },
     ] as never);
     vi.mocked(detalleVenta).mockResolvedValue([
-      { producto_id: 1, nombre: 'Pan Canilla', cantidad: 10, precio_unitario: 100, subtotal: 1000 },
+      { producto_id: 1, nombre: 'Cuaderno Carta', cantidad: 10, precio_unitario: 100, subtotal: 1000 },
     ] as never);
     render(<DeudoresPage />);
-    await user.click(await screen.findByText('Café del Centro'));
+    await user.click(await screen.findByText('Distribuidora La Esquina'));
     await user.click(await screen.findByRole('button', { name: /Devolver factura 3/ }));
 
     const dialog = screen.getByRole('dialog');
-    await user.type(within(dialog).getByLabelText(/Devolver Pan Canilla/), '5');
+    await user.type(within(dialog).getByLabelText(/Devolver Cuaderno Carta/), '5');
     await user.click(within(dialog).getByRole('button', { name: 'Registrar devolución' }));
 
     expect(registrarDevolucion).toHaveBeenCalledWith({
@@ -213,14 +213,14 @@ describe('DeudoresPage', () => {
       { venta_id: 10, numero_factura: 3, tipo: 'contado', fecha: '2026-09-04', total: 1000, devuelto: 0 },
     ] as never);
     vi.mocked(detalleVenta).mockResolvedValue([
-      { producto_id: 1, nombre: 'Pan Canilla', cantidad: 10, precio_unitario: 100, subtotal: 1000 },
+      { producto_id: 1, nombre: 'Cuaderno Carta', cantidad: 10, precio_unitario: 100, subtotal: 1000 },
     ] as never);
     render(<DeudoresPage />);
-    await user.click(await screen.findByText('Café del Centro'));
+    await user.click(await screen.findByText('Distribuidora La Esquina'));
     await user.click(await screen.findByRole('button', { name: /Devolver factura 3/ }));
 
     const dialog = screen.getByRole('dialog');
-    await user.type(within(dialog).getByLabelText(/Devolver Pan Canilla/), '15');
+    await user.type(within(dialog).getByLabelText(/Devolver Cuaderno Carta/), '15');
     expect(within(dialog).getByText(/cantidad devuelta no puede superar/i)).toBeInTheDocument();
     expect(within(dialog).getByRole('button', { name: 'Registrar devolución' })).toBeDisabled();
     expect(registrarDevolucion).not.toHaveBeenCalled();
@@ -231,15 +231,15 @@ describe('DeudoresPage', () => {
       { venta_id: 10, numero_factura: 3, tipo: 'credito', fecha: '2026-09-04', total: 5000, devuelto: 1000 },
     ] as never);
     vi.mocked(listarDevoluciones).mockResolvedValue([
-      { id: 1, cliente_id: 2, venta_id: 10, numero_factura: 3, monto: 1000, motivo: 'pan deteriorado', operador_id: 1, fecha_devolucion: '2026-09-05', detalle: [{ producto_id: 1, nombre: 'Pan Canilla', cantidad: 5, precio_unitario: 100, subtotal: 500 }] },
+      { id: 1, cliente_id: 2, venta_id: 10, numero_factura: 3, monto: 1000, motivo: 'artículo devuelto', operador_id: 1, fecha_devolucion: '2026-09-05', detalle: [{ producto_id: 1, nombre: 'Cuaderno Carta', cantidad: 5, precio_unitario: 100, subtotal: 500 }] },
     ] as never);
     const user = userEvent.setup();
     render(<DeudoresPage />);
-    await user.click(await screen.findByText('Café del Centro'));
-    expect(await screen.findByText(/pan deteriorado/)).toBeInTheDocument();
+    await user.click(await screen.findByText('Distribuidora La Esquina'));
+    expect(await screen.findByText(/artículo devuelto/)).toBeInTheDocument();
     expect(screen.getAllByText('-$10.00').length).toBeGreaterThan(0);
     // Muestra qué productos se devolvieron dentro de la factura.
-    expect(screen.getByText(/Pan Canilla × 5/)).toBeInTheDocument();
+    expect(screen.getByText(/Cuaderno Carta × 5/)).toBeInTheDocument();
   });
 
   it('filtra las devoluciones registradas por día y vuelve con Todos', async () => {
@@ -250,23 +250,23 @@ describe('DeudoresPage', () => {
       { venta_id: 10, numero_factura: 3, tipo: 'credito', fecha: '2026-09-04', total: 5000, devuelto: 1000 },
     ] as never);
     vi.mocked(listarDevoluciones).mockResolvedValue([
-      { id: 1, cliente_id: 2, venta_id: 10, numero_factura: 3, monto: 1000, motivo: 'pan deteriorado', operador_id: 1, fecha_devolucion: hoy, detalle: [] },
-      { id: 2, cliente_id: 2, venta_id: 10, numero_factura: 3, monto: 2000, motivo: 'pan extraviado', operador_id: 1, fecha_devolucion: '2030-01-01', detalle: [] },
+      { id: 1, cliente_id: 2, venta_id: 10, numero_factura: 3, monto: 1000, motivo: 'artículo devuelto', operador_id: 1, fecha_devolucion: hoy, detalle: [] },
+      { id: 2, cliente_id: 2, venta_id: 10, numero_factura: 3, monto: 2000, motivo: 'otro error', operador_id: 1, fecha_devolucion: '2030-01-01', detalle: [] },
     ] as never);
     const user = userEvent.setup();
     render(<DeudoresPage />);
-    await user.click(await screen.findByText('Café del Centro'));
-    expect(await screen.findByText(/pan deteriorado/)).toBeInTheDocument();
-    expect(screen.getByText(/pan extraviado/)).toBeInTheDocument();
+    await user.click(await screen.findByText('Distribuidora La Esquina'));
+    expect(await screen.findByText(/artículo devuelto/)).toBeInTheDocument();
+    expect(screen.getByText(/otro error/)).toBeInTheDocument();
 
     await user.click(screen.getByLabelText('Filtrar devoluciones por día'));
     const calendario = screen.getByRole('dialog', { name: 'Calendario' });
     await user.click(within(calendario).getByRole('button', { name: hoyDia }));
 
-    expect(screen.queryByText(/pan extraviado/)).not.toBeInTheDocument();
-    expect(screen.getByText(/pan deteriorado/)).toBeInTheDocument();
+    expect(screen.queryByText(/otro error/)).not.toBeInTheDocument();
+    expect(screen.getByText(/artículo devuelto/)).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Todos' }));
-    expect(screen.getByText(/pan extraviado/)).toBeInTheDocument();
+    expect(screen.getByText(/otro error/)).toBeInTheDocument();
   });
 });

@@ -360,12 +360,17 @@ describe('hayBackupHoy', () => {
     expect(hayBackupHoy(rutas)).toBe(false);
   });
 
-  it('no confunde una copia de enero con una de hoy', () => {
-    // El prefijo lleva el guion. Sin él, una copia de enero puede empezar por el
-    // mismo prefijo que una de hoy y `hayBackupHoy` diría que ya se respaldó.
+  it('no confunde una copia de otro día del mismo mes con una de hoy', () => {
+    // El prefijo que se busca lleva el guion. Sin él, `tienda-20260901-000000`
+    // empieza por `tienda-202609` y `hayBackupHoy` diría que ya se respaldó.
+    //
+    // El día se elige distinto al de hoy a propósito: si el nombre fuera el de
+    // hoy, `hayBackupHoy` respondería que sí —correctamente— y el test
+    // fallaría cada primero de mes sin que nadie hubiera roto nada.
     const { rutas } = disco();
-    const prefijoDelMes = soloFechaUtc().slice(0, 6);
-    poner(rutas, `tienda-${prefijoDelMes}01-000000.db`);
+    const hoy = soloFechaUtc(); // AAAAMMDD
+    const otroDia = hoy.slice(6, 8) === '01' ? '02' : '01';
+    poner(rutas, `tienda-${hoy.slice(0, 6)}${otroDia}-000000.db`);
 
     expect(hayBackupHoy(rutas)).toBe(false);
   });

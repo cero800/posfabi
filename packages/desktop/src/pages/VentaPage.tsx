@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Minus, Plus, Search, ShoppingCart, Trash2, X } from 'lucide-react';
-import type { Cliente, Factura, Producto, VentaInput } from '@tienda/core';
+import type { Categoria, Cliente, Factura, Producto, VentaInput } from '@tienda/core';
 import {
   crearVenta,
   getFactura,
+  listarCategorias,
   listarClientes,
   listarPreciosCliente,
   listarProductos,
@@ -16,6 +17,7 @@ import { STOCK_BAJO } from '../lib/stock';
 import { Card, CardHeader } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
+import { Select } from '../components/ui/Select';
 import { Modal } from '../components/ui/Modal';
 import { PageLoader } from '../components/ui/Spinner';
 import { FacturaModal } from '../components/ui/FacturaModal';
@@ -28,6 +30,8 @@ export default function VentaPage() {
   const tasa = useSesion((s) => s.tasa);
 
   const [productos, setProductos] = useState<Producto[]>([]);
+  const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [categoriaFiltro, setCategoriaFiltro] = useState('');
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [stock, setStock] = useState<Record<number, number>>({});
   const [busqueda, setBusqueda] = useState('');
@@ -53,6 +57,13 @@ export default function VentaPage() {
         setStock(Object.fromEntries(ss.map((s) => [s.producto_id, s.cantidad_disponible])));
       })
       .finally(() => setCargando(false));
+    // Aparte y con su propio `catch`: si el filtro por categoría no se puede
+    // cargar, la venta tiene que seguir funcionando sin él. Un `Promise.all`
+    // tiraría los productos y los clientes por tierra porque fallara una lista
+    // que es solo comodidad.
+    listarCategorias()
+      .then(setCategorias)
+      .catch(() => setCategorias([]));
   }, []);
 
   const recargarPrecios = async (clienteId: number) => {
@@ -93,9 +104,20 @@ export default function VentaPage() {
 
   const filtrados = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
-    if (!q) return productos;
-    return productos.filter((p) => p.nombre.toLowerCase().includes(q) || p.codigo.toLowerCase().includes(q));
-  }, [productos, busqueda]);
+    return productos.filter((p) => {
+      // El filtro de categoría va antes que la búsqueda a propósito: en un
+      // catálogo de papelería el cajero casi nunca busca por nombre —busca
+      // "cuaderno universitario" y aparecen treinta—, lo que hace es mirar una
+      // sección y recorrerla. La búsqueda sigue funcionando encima de la sección.
+      if (categoriaFiltro === 'sin-categoria') {
+        if (p.categoria_id != null) return false;
+      } else if (categoriaFiltro !== '' && String(p.categoria_id ?? '') !== categoriaFiltro) {
+        return false;
+      }
+      if (!q) return true;
+      return p.nombre.toLowerCase().includes(q) || p.codigo.toLowerCase().includes(q);
+    });
+  }, [productos, busqueda, categoriaFiltro]);
 
   const subtotal = useMemo(() => lineas.reduce((acc, l) => acc + Math.round(l.precio * l.cantidad), 0), [lineas]);
 
@@ -160,6 +182,24 @@ export default function VentaPage() {
               className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-9 pr-3 text-sm shadow-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
             />
           </div>
+          {categorias.length > 0 && (
+            <div className="w-44 shrink-0">
+              <Select
+                aria-label="Filtrar por categoría"
+                value={categoriaFiltro}
+                onChange={(e) => setCategoriaFiltro(e.target.value)}
+                className="py-1.5 text-sm"
+              >
+                <option value="">Todo el catálogo</option>
+                {categorias.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.nombre}
+                  </option>
+                ))}
+                <option value="sin-categoria">Sin categoría</option>
+              </Select>
+            </div>
+          )}
           {busqueda && (
             <Button variant="ghost" size="sm" onClick={() => setBusqueda('')} aria-label="Limpiar búsqueda">
               <X className="h-4 w-4" />

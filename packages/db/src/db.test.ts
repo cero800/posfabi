@@ -9,6 +9,7 @@ import {
   estaEnTransaccion,
   ejecutar,
   ejecutarScript,
+  hoy,
   qObligatorio,
   qTodos,
   qUno,
@@ -313,5 +314,66 @@ describe('helpers de consulta', () => {
     const db = enMemoria();
     ejecutarScript(db, "INSERT INTO categorias (nombre) VALUES ('A'); INSERT INTO categorias (nombre) VALUES ('B');");
     expect(qTodos(db, 'SELECT nombre FROM categorias')).toHaveLength(2);
+  });
+});
+
+/**
+ * Zonas horarias para el test del día.
+ *
+ * Entre Kiritimati (UTC+14) y Midway (UTC-11) hay 25 horas de diferencia, así
+ * que las dos nunca pueden caer en la misma fecha. Con las dos, siempre hay al
+ * menos una que difiere de la fecha en UTC, y el test no puede volverse inocuo
+ * por casualidad: si algún día el reloj del runner coincidiera con las dos, el
+ * `expect` de la precondición fallaría y se vería, en vez de pasar sin comprobar
+ * nada.
+ */
+const ZONAS = ['Pacific/Kiritimati', 'America/Caracas', 'Pacific/Midway'] as const;
+
+describe('el día del negocio', () => {
+  /**
+   * `hoy()` con el reloj de JavaScript, para comparar.
+   *
+   * Se calcula con los accesores locales en vez de `toISOString()` a propósito:
+   * `toISOString()` es UTC, que es justo lo que se está probando que no se usa.
+   */
+  const hoyLocal = (): string => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
+  it('es la fecha local, no la de UTC', () => {
+    const tzOriginal = process.env.TZ;
+    const db = enMemoria();
+    try {
+      for (const zona of ZONAS) {
+        process.env.TZ = zona;
+        expect(hoy(db), `con TZ=${zona}`).toBe(hoyLocal());
+      }
+    } finally {
+      if (tzOriginal === undefined) delete process.env.TZ;
+      else process.env.TZ = tzOriginal;
+    }
+  });
+
+  /**
+   * La mitad del test anterior se puede volver cierto sin querer: si a la hora
+   * en que corre el runner happen las tres zonas dan la misma fecha que UTC, el
+   * `expect` pasa tanto si el código usa `localtime` como si usa UTC. Esto
+   * comprueba que el test realmente está midiendo algo, y falla si algún día se
+   * rompe esa garantía.
+   */
+  it('el reloj del runner hace posible distinguir UTC de hora local', () => {
+    const tzOriginal = process.env.TZ;
+    try {
+      const fechas = new Set<string>();
+      for (const zona of [...ZONAS, 'UTC']) {
+        process.env.TZ = zona;
+        fechas.add(hoyLocal());
+      }
+      expect(fechas.size, 'ninguna zona difiere de UTC: el test no probaría nada').toBeGreaterThan(1);
+    } finally {
+      if (tzOriginal === undefined) delete process.env.TZ;
+      else process.env.TZ = tzOriginal;
+    }
   });
 });

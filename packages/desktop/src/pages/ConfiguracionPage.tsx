@@ -1,14 +1,18 @@
 import { useEffect, useState } from 'react';
-import { DatabaseBackup, KeyRound, RefreshCw, Save, Trash2 } from 'lucide-react';
-import { NEGOCIO_CONFIG_KEYS, RECORDATORIO_PAGO_DIAS_KEY } from '@tienda/core';
+import { DatabaseBackup, KeyRound, Printer, RefreshCw, Save, Trash2 } from 'lucide-react';
+import { NEGOCIO_CONFIG_KEYS, RECORDATORIO_PAGO_DIAS_KEY, describirDestino } from '@tienda/core';
 import {
   cambiarPin,
   crearBackup,
   eliminarBackup,
   getConfig,
+  hayBackupHoy,
   listarBackups,
+  obtenerDatosNegocio,
+  obtenerDestinoImpresora,
   setConfig,
   type BackupItem,
+  type DestinoImpresora,
 } from '../services/db';
 import { useSesion } from '../store/sesion';
 import { DEFAULT_RECORDATORIO_DIAS } from '../lib/factura';
@@ -17,6 +21,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { PageHeader } from '../components/ui/Page';
 import { PageLoader } from '../components/ui/Spinner';
+import { ConfigurarImpresoraModal } from '../components/ui/ConfigurarImpresoraModal';
 
 export default function ConfiguracionPage() {
   const operadorId = useSesion((s) => s.operador?.id ?? 0);
@@ -37,23 +42,29 @@ export default function ConfiguracionPage() {
   const [pinGuardando, setPinGuardando] = useState(false);
 
   const [backups, setBackups] = useState<BackupItem[]>([]);
+  const [backupHoy, setBackupHoy] = useState<boolean | null>(null);
   const [backupMsj, setBackupMsj] = useState<string | null>(null);
   const [backupError, setBackupError] = useState<string | null>(null);
   const [backupCreando, setBackupCreando] = useState(false);
 
+  const [destino, setDestino] = useState<DestinoImpresora | null>(null);
+  const [destinoCargando, setDestinoCargando] = useState(true);
+  const [impresoraAbierto, setImpresoraAbierto] = useState(false);
+
   useEffect(() => {
-    Promise.all([
-      getConfig(NEGOCIO_CONFIG_KEYS.nombre),
-      getConfig(NEGOCIO_CONFIG_KEYS.rif),
-      getConfig(NEGOCIO_CONFIG_KEYS.telefono),
-      getConfig(NEGOCIO_CONFIG_KEYS.direccion),
-      getConfig(RECORDATORIO_PAGO_DIAS_KEY),
-    ])
-      .then(([n, r, t, d, rd]) => {
-        setNombre(n ?? '');
-        setRif(r ?? '');
-        setTelefono(t ?? '');
-        setDireccion(d ?? '');
+    // Un `Promise.all` con los cinco: si cualquiera falla se pierde todo, y
+    // perder el nombre del negocio por un `get_config` que falló deja la
+    // pantalla con campos vacíos que parecen vacíos de verdad.
+    obtenerDatosNegocio()
+      .then((d) => {
+        setNombre(d.nombre);
+        setRif(d.rif);
+        setTelefono(d.telefono);
+        setDireccion(d.direccion);
+      })
+      .catch(() => undefined);
+    getConfig(RECORDATORIO_PAGO_DIAS_KEY)
+      .then((rd) => {
         const dias = Number(rd);
         setRecordatorioDias(
           Number.isFinite(dias) && dias >= 0 ? String(Math.floor(dias)) : String(DEFAULT_RECORDATORIO_DIAS),
@@ -62,11 +73,17 @@ export default function ConfiguracionPage() {
       .catch(() => undefined)
       .finally(() => setCargando(false));
     void cargarBackups();
+    obtenerDestinoImpresora()
+      .then(setDestino)
+      .catch(() => setDestino(null))
+      .finally(() => setDestinoCargando(false));
   }, []);
 
   const cargarBackups = async () => {
     try {
-      setBackups(await listarBackups());
+      const [lista, hoy] = await Promise.all([listarBackups(), hayBackupHoy()]);
+      setBackups(lista);
+      setBackupHoy(hoy);
     } catch {
       setBackups([]);
     }
@@ -238,6 +255,37 @@ export default function ConfiguracionPage() {
       </Card>
 
       <Card className="mt-4 max-w-xl p-4">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <Printer className="h-4 w-4 shrink-0 text-gray-500" />
+            <h2 className="text-sm font-semibold text-gray-900">Impresora térmica</h2>
+          </div>
+          <Button variant="secondary" size="sm" onClick={() => setImpresoraAbierto(true)}>
+            {destino ? 'Cambiar' : 'Configurar'}
+          </Button>
+        </div>
+
+        {destinoCargando ? (
+          <p className="text-sm text-gray-400">Buscando la configuración…</p>
+        ) : destino ? (
+          <p className="text-sm text-gray-700">
+            Imprimiendo en <span className="font-mono text-xs">{describirDestino(destino)}</span>
+          </p>
+        ) : (
+          <p className="text-sm text-gray-500">
+            No hay impresora configurada. Sin ella el POS funciona igual, pero no sale el ticket: los botones de
+            «Térmica» abren directamente esta pantalla.
+          </p>
+        )}
+
+        <div className="mt-3 rounded-lg bg-gray-50 p-3 text-xs text-gray-500">
+          Antes de dar por buena una impresora USB, pruebe una impresión desde el diálogo. Con el controlador de la
+          marca en vez de «Texto sin formato» el ticket sale sin formato ni corte, y eso no se ve hasta que hay papel
+          en la impresora.
+        </div>
+      </Card>
+
+      <Card className="mt-4 max-w-xl p-4">
         <div className="mb-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <DatabaseBackup className="h-4 w-4 text-gray-500" />
@@ -248,6 +296,11 @@ export default function ConfiguracionPage() {
           </Button>
         </div>
 
+        {backupHoy && (
+          <p role="status" className="mb-3 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">
+            Hoy ya hay una copia automática. La siguiente se hace al abrir el POS mañana.
+          </p>
+        )}
         {backupMsj && (
           <p role="status" className="mb-3 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">
             {backupMsj}
@@ -286,10 +339,19 @@ export default function ConfiguracionPage() {
 
         <div className="mt-4 rounded-lg bg-gray-50 p-3 text-xs text-gray-500">
           Se guarda una copia automática cada día en tu carpeta de Documentos, dentro de{' '}
-          <span className="font-mono">kalientico/backups</span>. Las copias manuales se suman a las automáticas y
-          se conservan las 30 más recientes.
+          <span className="font-mono">tienda\backups</span>. Las copias manuales se suman a las automáticas y se
+          conservan las 30 más recientes.
         </div>
       </Card>
+
+      <ConfigurarImpresoraModal
+        open={impresoraAbierto}
+        onClose={() => setImpresoraAbierto(false)}
+        onGuardado={(guardado) => {
+          setDestino(guardado);
+          setImpresoraAbierto(false);
+        }}
+      />
     </div>
   );
 }

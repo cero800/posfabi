@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Boxes, MinusCircle, PackagePlus, Plus, Settings2 } from 'lucide-react';
-import type { StockItem } from '@tienda/core';
+import { Boxes, FolderTree, MinusCircle, PackagePlus, Plus, Settings2 } from 'lucide-react';
+import type { Categoria, StockItem } from '@tienda/core';
 import {
+  listarCategorias,
   listarProductos,
   listarStock,
   registrarAjuste,
   registrarEntradaMercancia,
   registrarMerma,
 } from '../services/db';
-import { parseCentsInput } from '../lib/format';
+import { hoyIso, parseCentsInput } from '../lib/format';
 import type { Producto } from '@tienda/core';
 import { useSesion } from '../store/sesion';
 import { Card } from '../components/ui/Card';
@@ -29,13 +30,15 @@ export default function InventarioPage() {
   const esAdmin = useSesion((s) => s.operador?.rol === 'admin');
   const [stock, setStock] = useState<StockItem[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
+  const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [categoriaFiltro, setCategoriaFiltro] = useState('');
   const [cargando, setCargando] = useState(true);
   const [accion, setAccion] = useState<Accion | null>(null);
   const [productoId, setProductoId] = useState('');
   const [cantidad, setCantidad] = useState('');
   const [costo, setCosto] = useState('');
   const [motivo, setMotivo] = useState('');
-  const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10));
+  const [fecha, setFecha] = useState(hoyIso());
   const [error, setError] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
 
@@ -45,9 +48,35 @@ export default function InventarioPage() {
     listarProductos()
       .then((ps) => setProductos(ps.filter((p) => p.activo)))
       .catch(() => {});
+    // Con su propio `catch` por lo mismo que en la venta: el filtro por
+    // categoría es una comodidad y no puede dejar la pantalla sin inventario.
+    listarCategorias()
+      .then(setCategorias)
+      .catch(() => setCategorias([]));
   }, []);
 
-  const pendientes = useMemo(() => stock.filter((s) => s.cantidad_disponible <= 0), [stock]);
+  const pendientes = useMemo(
+    () => stock.filter((s) => s.cantidad_disponible <= 0),
+    [stock],
+  );
+  /**
+   * Productos por debajo de su mínimo.
+   *
+   * Es distinto de `pendientes`: agotado es "no se puede vender más", por
+   * debajo del mínimo es "todavía se puede, pero hay que pedir". La columna lo
+   * muestra uno a uno y el aviso de arriba los junta, porque son dos decisiones
+   * distintas para el dueño de la tienda.
+   */
+  const bajoMinimo = useMemo(
+    () => stock.filter((s) => s.stock_minimo > 0 && s.cantidad_disponible < s.stock_minimo),
+    [stock],
+  );
+
+  const filtrados = useMemo(() => {
+    if (categoriaFiltro === 'sin-categoria') return stock.filter((s) => s.categoria_id == null);
+    if (categoriaFiltro === '') return stock;
+    return stock.filter((s) => String(s.categoria_id ?? '') === categoriaFiltro);
+  }, [stock, categoriaFiltro]);
 
   const abrir = (a: Accion, productoIdDefault?: number) => {
     setAccion(a);
@@ -55,7 +84,7 @@ export default function InventarioPage() {
     setCantidad('');
     setCosto('');
     setMotivo('');
-    setFecha(new Date().toISOString().slice(0, 10));
+    setFecha(hoyIso());
     setError(null);
     if (a === 'entrada' && productoIdDefault != null) {
       const p = productos.find((x) => x.id === productoIdDefault);
@@ -140,13 +169,40 @@ export default function InventarioPage() {
       />
 
       {pendientes.length > 0 && (
-        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-          ¡Ojo! {pendientes.length} producto(s) con stock agotado o negativo:
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+          ¡Ojo! {pendientes.length} producto(s) con stock agotado o negativo:{' '}
           {pendientes.map((p) => p.nombre).join(', ')}.
         </div>
       )}
 
-      {stock.length === 0 ? (
+      {bajoMinimo.length > 0 && (
+        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          {bajoMinimo.length} producto(s) por debajo del mínimo: {bajoMinimo.map((p) => p.nombre).join(', ')}.
+        </div>
+      )}
+
+      {categorias.length > 0 && (
+        <Card className="mb-4 p-3">
+          <div className="flex items-center gap-2">
+            <FolderTree className="h-4 w-4 shrink-0 text-gray-400" />
+            <Select
+              aria-label="Filtrar por categoría"
+              value={categoriaFiltro}
+              onChange={(e) => setCategoriaFiltro(e.target.value)}
+            >
+              <option value="">Todas las categorías</option>
+              {categorias.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nombre}
+                </option>
+              ))}
+              <option value="sin-categoria">Sin categoría</option>
+            </Select>
+          </div>
+        </Card>
+      )}
+
+      {filtrados.length === 0 ? (
         <Card>
           <EmptyState icon={<Boxes className="h-8 w-8" />} message="Sin movimientos de inventario aún" />
         </Card>
@@ -157,37 +213,44 @@ export default function InventarioPage() {
               <tr>
                 <Th>Código</Th>
                 <Th>Producto</Th>
+                <Th>Categoría</Th>
                 <Th className="text-right">Disponible</Th>
+                <Th className="text-right">Mínimo</Th>
                 <Th>Unidad</Th>
                 <Th>Estado</Th>
                 <Th className="text-right">Acción</Th>
               </tr>
             </THead>
             <tbody>
-              {stock.map((s) => (
-                <tr key={s.producto_id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
-                  <Td className="font-mono text-xs text-gray-500">{s.codigo}</Td>
-                  <Td className="font-medium text-gray-900">{s.nombre}</Td>
-                  <Td className="text-right font-semibold">{s.cantidad_disponible}</Td>
-                  <Td>{s.unidad_medida}</Td>
-                  <Td>
-                    <Badge tone={s.cantidad_disponible <= 0 ? 'red' : 'green'}>
-                      {s.cantidad_disponible <= 0 ? 'Agotado' : 'Disponible'}
-                    </Badge>
-                  </Td>
-                  <Td className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => abrir('entrada', s.producto_id)}
-                      aria-label={`Recibir mercancía de ${s.nombre}`}
-                    >
-                      <PackagePlus className="h-4 w-4" />
-                      <span className="ml-1"> Recibir</span>
-                    </Button>
-                  </Td>
-                </tr>
-              ))}
+              {filtrados.map((s) => {
+                const bajo = s.stock_minimo > 0 && s.cantidad_disponible < s.stock_minimo;
+                return (
+                  <tr key={s.producto_id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
+                    <Td className="font-mono text-xs text-gray-500">{s.codigo}</Td>
+                    <Td className="font-medium text-gray-900">{s.nombre}</Td>
+                    <Td className="text-gray-500">{s.categoria_nombre ?? '—'}</Td>
+                    <Td className="text-right font-semibold">{s.cantidad_disponible}</Td>
+                    <Td className="text-right text-gray-500">{s.stock_minimo}</Td>
+                    <Td>{s.unidad_medida}</Td>
+                    <Td>
+                      <Badge tone={s.cantidad_disponible <= 0 ? 'red' : bajo ? 'amber' : 'green'}>
+                        {s.cantidad_disponible <= 0 ? 'Agotado' : bajo ? 'Bajo mínimo' : 'Disponible'}
+                      </Badge>
+                    </Td>
+                    <Td className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => abrir('entrada', s.producto_id)}
+                        aria-label={`Recibir mercancía de ${s.nombre}`}
+                      >
+                        <PackagePlus className="h-4 w-4" />
+                        <span className="ml-1"> Recibir</span>
+                      </Button>
+                    </Td>
+                  </tr>
+                );
+              })}
             </tbody>
           </Table>
         </Card>

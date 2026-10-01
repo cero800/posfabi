@@ -56,3 +56,28 @@ export function parseCentsInput(raw: string, moneda: Moneda): number | null {
   if (!Number.isFinite(f) || f < 0) return null;
   return Math.round(f * CENTS_PER_UNIT);
 }
+
+//---------------------------------------------------------------------------
+// Fechas
+//---------------------------------------------------------------------------
+
+/**
+ * El día de hoy en la tienda, en `AAAA-MM-DD`.
+ *
+ * Se arma con los accesores locales de `Date`, no con `toISOString()`, y la
+ * diferencia no es cosmética. `toISOString()` devuelve la fecha en UTC, que en
+ * Venezuela va cuatro horas adelante: desde las ocho de la noche, el reporte y
+ * el inventario abrían solos con la fecha de mañana, y como el backend archiva
+ * las ventas con el día local (ver `HOY_SQL` en `packages/db/src/db.ts`), esa
+ * pantalla se abría viendo un día que todavía no había pasado y sin una sola
+ * venta. La tienda cierra de noche, así que era justo a la hora de cerrar caja.
+ *
+ * El backend usa `date('now','localtime')` y esta función usa el reloj del
+ * navegador: los dos son la hora local de la misma computadora, así que
+ * coinciden. Si algún día dejaran de coincidir, la fecha que se envía como
+ * filtro manda: el backend no la reinterpreta.
+ */
+export function hoyIso(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}

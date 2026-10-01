@@ -12,20 +12,21 @@
 import type { DatabaseSync } from 'node:sqlite';
 import type { EntradaResumen, ResumenDia, ResumenDiaDevolucion } from '@tienda/core';
 
-import { qTodos, qUno } from './db.js';
+import { HOY_SQL, qTodos, qUno } from './db.js';
 import { estadoCuentaTodos } from './deudores.js';
 import { detalleDevolucion } from './devoluciones.js';
 
 /**
  * Condición de fecha para una columna, con o sin día explícito.
  *
- * Sin fecha usa `date('now')`, que es la fecha del sistema. Se compara con
- * `date(...)` en los dos lados porque las fechas se guardan como texto y
- * `2026-09-01 14:30:00` no es igual a `2026-09-01` en una comparación cruda.
+ * Sin fecha usa `HOY_SQL`, el día local de la tienda; ver `db.ts` para por qué no
+ * es el de UTC. Se compara con `date(...)` en los dos lados porque las fechas se
+ * guardan como texto y `2026-09-01 14:30:00` no es igual a `2026-09-01` en una
+ * comparación cruda.
  */
 function filtroFecha(columna: string, fecha: string | null): { sql: string; params: (string | null)[] } {
   return fecha === null || fecha === ''
-    ? { sql: `date(${columna}) = date('now')`, params: [] }
+    ? { sql: `date(${columna}) = ${HOY_SQL}`, params: [] }
     : { sql: `date(${columna}) = date(?)`, params: [fecha] };
 }
 

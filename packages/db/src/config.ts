@@ -5,7 +5,11 @@
 // casi todos los módulos: ventas, pagos, caja y reportes.
 
 import type { DatabaseSync } from 'node:sqlite';
-import { NEGOCIO_CONFIG_KEYS, TASA_CAMBIO_KEY } from '@tienda/core';
+import {
+  NEGOCIO_CONFIG_KEYS,
+  TASA_CAMBIO_KEY,
+  type DatosNegocio,
+} from '@tienda/core';
 
 import { ejecutar, qUno } from './db.js';
 import { validacion } from './errors.js';
@@ -51,19 +55,15 @@ export function setTasaCambio(db: DatabaseSync, valor: number): void {
   escribirConfig(db, TASA_CAMBIO_KEY, String(validarTasaCambio(valor)));
 }
 
-export interface DatosNegocio {
-  nombre: string;
-  rif: string;
-  telefono: string;
-  direccion: string;
-}
+// El tipo vive en `@tienda/core` y se re-exporta aquí para no cambiar los
+// imports del resto del backend.
+export type { DatosNegocio };
 
 /**
  * Nombre, RIF, teléfono y dirección del negocio, que salen impresos en la
  * factura y en el comprobante de cierre. Vacíos si no se han configurado: es
  * preferible una factura sin teléfono a una que no se puede emitir.
- */
-export function datosNegocio(db: DatabaseSync): DatosNegocio {
+ */export function datosNegocio(db: DatabaseSync): DatosNegocio {
   return {
     nombre: leerConfig(db, NEGOCIO_CONFIG_KEYS.nombre) ?? '',
     rif: leerConfig(db, NEGOCIO_CONFIG_KEYS.rif) ?? '',

@@ -13,6 +13,7 @@ const SetupAdminPage = lazy(() => import('./pages/SetupAdminPage'));
 const AbrirCajaPage = lazy(() => import('./pages/AbrirCajaPage'));
 const VentaPage = lazy(() => import('./pages/VentaPage'));
 const ProductosPage = lazy(() => import('./pages/ProductosPage'));
+const CategoriasPage = lazy(() => import('./pages/CategoriasPage'));
 const ClientesPage = lazy(() => import('./pages/ClientesPage'));
 const InventarioPage = lazy(() => import('./pages/InventarioPage'));
 const ReportePage = lazy(() => import('./pages/ReportePage'));
@@ -40,6 +41,7 @@ export default function App() {
                   <Route path="/" element={<Navigate to="/venta" replace />} />
                   <Route path="/venta" element={<VentaPage />} />
                   <Route path="/productos" element={<ProductosPage />} />
+                  <Route path="/categorias" element={<CategoriasPage />} />
                   <Route path="/clientes" element={<ClientesPage />} />
                   <Route path="/inventario" element={<InventarioPage />} />
                   <Route path="/reporte" element={<ReportePage />} />

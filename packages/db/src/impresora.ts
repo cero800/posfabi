@@ -40,6 +40,7 @@ import { promisify } from 'node:util';
 
 import {
   IMPRESORA_TERMICA_KEY,
+  describirDestino,
   type DestinoImpresora,
   NEGOCIO_CONFIG_KEYS,
 } from '@tienda/core';
@@ -185,17 +186,10 @@ export function escribirDestino(db: DatabaseSync, destino: DestinoImpresora): De
 // Los tres destinos
 //---------------------------------------------------------------------------
 
-/** Cómo se describe un destino en un mensaje para el cajero. */
-export function describirDestino(destino: DestinoImpresora): string {
-  switch (destino.tipo) {
-    case 'red':
-      return `${destino.host}:${destino.puerto} (red)`;
-    case 'usb':
-      return `${destino.impresora} (USB)`;
-    case 'archivo':
-      return destino.ruta;
-  }
-}
+// La función está en `@tienda/core` porque la interfaz la usa para el mismo
+// mensaje. Se re-exporta para que el resto del backend la siga importando de
+// aquí, que es donde se espera encontrarla.
+export { describirDestino };
 
 /**
  * Escribe bytes crudos a una impresora de red por el puerto 9100.

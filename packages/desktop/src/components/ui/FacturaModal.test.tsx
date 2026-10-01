@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { FacturaModal } from './FacturaModal';
-import { imprimirTicket, listarImpresoras, setConfig } from '../../services/db';
+import { configurarDestinoImpresora, imprimirTicket, listarImpresoras, obtenerDestinoImpresora } from '../../services/db';
 import type { Factura } from '@tienda/core';
 
 vi.mock('../../lib/facturaPdf', () => ({
@@ -13,8 +13,10 @@ vi.mock('../../lib/facturaPdf', () => ({
 vi.mock('../../services/db', () => ({
   guardarFacturaPdf: vi.fn().mockResolvedValue('/tmp/factura-001.pdf'),
   imprimirTicket: vi.fn(),
-  listarImpresoras: vi.fn().mockResolvedValue(['/dev/usb/lp0']),
+  listarImpresoras: vi.fn().mockResolvedValue(['EPSON TM-T20III']),
   probarImpresora: vi.fn().mockResolvedValue(undefined),
+  obtenerDestinoImpresora: vi.fn().mockResolvedValue(null),
+  configurarDestinoImpresora: vi.fn().mockResolvedValue({ tipo: 'usb', impresora: 'EPSON TM-T20III' }),
   getConfig: vi.fn().mockResolvedValue(''),
   setConfig: vi.fn().mockResolvedValue(undefined),
   IMPRESORA_TERMICA_KEY: 'impresora_termica',
@@ -38,7 +40,7 @@ const factura: Factura = {
   impuesto: 0,
   total: 500,
   tasa_cambio: 36.85,
-  detalle: [{ producto: 'Pan Canilla', cantidad: 1, precio_unitario: 500, subtotal: 500 }],
+  detalle: [{ producto: 'Cuaderno Carta', cantidad: 1, precio_unitario: 500, subtotal: 500 }],
   pagos: [{ tipo_pago: 'efectivo', moneda: 'usd', monto: 500, numero_referencia: null }],
   devoluciones: [],
 };
@@ -46,9 +48,11 @@ const factura: Factura = {
 beforeEach(() => {
   vi.mocked(imprimirTicket).mockReset();
   vi.mocked(imprimirTicket).mockResolvedValue(undefined);
-  vi.mocked(listarImpresoras).mockResolvedValue(['/dev/usb/lp0']);
-  vi.mocked(setConfig).mockReset();
-  vi.mocked(setConfig).mockResolvedValue(undefined);
+  vi.mocked(listarImpresoras).mockResolvedValue(['EPSON TM-T20III']);
+  vi.mocked(obtenerDestinoImpresora).mockReset();
+  vi.mocked(obtenerDestinoImpresora).mockResolvedValue(null);
+  vi.mocked(configurarDestinoImpresora).mockReset();
+  vi.mocked(configurarDestinoImpresora).mockResolvedValue({ tipo: 'usb', impresora: 'EPSON TM-T20III' });
 });
 
 describe('FacturaModal: impresión térmica', () => {
@@ -67,7 +71,7 @@ describe('FacturaModal: impresión térmica', () => {
         cliente: 'Consumidor Final',
         total: 500,
         detalle: expect.arrayContaining([
-          expect.objectContaining({ producto: 'Pan Canilla', cantidad: 1, subtotal: 500 }),
+          expect.objectContaining({ producto: 'Cuaderno Carta', cantidad: 1, subtotal: 500 }),
         ]),
         pagos: expect.arrayContaining([
           expect.objectContaining({ tipo_pago: 'efectivo', moneda: 'usd', monto: 500 }),
@@ -88,10 +92,10 @@ describe('FacturaModal: impresión térmica', () => {
     await user.click(screen.getByRole('button', { name: /configurar impresora/i }));
     expect(screen.getByText('Configurar impresora térmica')).toBeInTheDocument();
 
-    await user.click(await screen.findByRole('button', { name: /dev\/usb\/lp0/i }));
+    await user.click(await screen.findByRole('button', { name: /EPSON TM-T20III/i }));
     await user.click(screen.getByRole('button', { name: 'Guardar' }));
 
-    expect(setConfig).toHaveBeenCalledWith('impresora_termica', '/dev/usb/lp0');
+    expect(configurarDestinoImpresora).toHaveBeenCalledWith({ tipo: 'usb', impresora: 'EPSON TM-T20III' });
     expect(imprimirTicket).toHaveBeenCalledTimes(2);
     expect(await screen.findByText(/ticket enviado a la impresora térmica/i)).toBeInTheDocument();
   });

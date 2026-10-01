@@ -20,7 +20,7 @@ import {
   registrarAbono,
   registrarDevolucion,
 } from '../services/db';
-import { formatCents, formatUsdCents, formatVesCents, parseCentsInput } from '../lib/format';
+import { formatCents, formatUsdCents, formatVesCents, hoyIso, parseCentsInput } from '../lib/format';
 import type { MontoPago } from '../lib/pago';
 import { useSesion } from '../store/sesion';
 import { Card, CardHeader } from '../components/ui/Card';
@@ -375,7 +375,7 @@ export default function DeudoresPage() {
         <Card>
           <CardHeader
             title={seleccion ? `Facturas — ${seleccion.nombre}` : 'Facturas y devoluciones'}
-            subtitle="Devoluciones por panes deteriorados/extraviados"
+            subtitle="Mercancía deteriorada o extraviada, devuelta por el cliente"
           />
           {!seleccion ? (
             <EmptyState message="Selecciona un cliente" />
@@ -429,7 +429,7 @@ export default function DeudoresPage() {
                 </p>
                 <div className="flex items-center gap-2">
                   <DatePicker
-                    value={filtroDia === '' ? new Date().toISOString().slice(0, 10) : filtroDia}
+                    value={filtroDia === '' ? hoyIso() : filtroDia}
                     onChange={setFiltroDia}
                     aria-label="Filtrar devoluciones por día"
                   />

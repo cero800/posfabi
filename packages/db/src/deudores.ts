@@ -14,7 +14,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 import type { EstadoCuenta } from '@tienda/core';
 
-import { qTodos, qUno } from './db.js';
+import { HOY_SQL, qTodos, qUno } from './db.js';
 import { noEncontrado } from './errors.js';
 
 /** Una factura dentro del FIFO, con la marca de si todavía está en plazo. */
@@ -120,7 +120,7 @@ function lineasCliente(db: DatabaseSync, clienteId: number, diasCredito: number)
     `SELECT v.id AS venta_id,
             v.total - COALESCE((SELECT SUM(d.monto) FROM devoluciones d
                                  WHERE d.venta_id = v.id), 0) AS saldo,
-            (date('now') <= date(v.fecha, '+' || ?2 || ' days')) AS al_dia
+            (${HOY_SQL} <= date(v.fecha, '+' || ?2 || ' days')) AS al_dia
        FROM ventas v
       WHERE v.cliente_id = ?1 AND v.estado = 'entregada'
       ORDER BY v.fecha ASC, v.id ASC`,

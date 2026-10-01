@@ -25,7 +25,7 @@ import type {
   TipoPago,
 } from '@tienda/core';
 
-import { qObligatorio, qTodos, qUno, transaccion, ejecutar } from './db.js';
+import { HOY_SQL, qObligatorio, qTodos, qUno, transaccion, ejecutar } from './db.js';
 import { AppError, CODIGO_ERROR, validacion } from './errors.js';
 import { aUsd, aVes, redondearCent, tasa as validarTasaCambio } from './money.js';
 import { datosNegocio, getTasaCambio } from './config.js';
@@ -97,7 +97,7 @@ export function abrirCaja(db: DatabaseSync, input: CajaAbrirInput): number {
     `INSERT INTO cajas (fecha, operador_id,
                         efectivo_inicial_usd, efectivo_esperado_usd,
                         efectivo_inicial_ves, efectivo_esperado_ves)
-     VALUES (date('now'), ?, ?, ?, ?, ?)`,
+     VALUES (${HOY_SQL}, ?, ?, ?, ?, ?)`,
     input.operador_id,
     picoUsd,
     picoUsd,
@@ -124,7 +124,7 @@ function efectivoDelDia(
               COALESCE(SUM(CASE WHEN moneda = 'ves' THEN monto ELSE 0 END), 0) AS ves
          FROM pagos
         WHERE tipo_pago = 'efectivo'
-          AND date(fecha_pago) = date('now')
+          AND date(fecha_pago) = ${HOY_SQL}
           AND ${soloVentas ? 'venta_id IS NOT NULL' : 'venta_id IS NULL'}`,
     ) ?? { usd: 0, ves: 0 }
   );
@@ -138,7 +138,7 @@ function desglosePagos(db: DatabaseSync, cajaId: number): CierreCajaPago[] {
       db,
       `SELECT tipo_pago, moneda, SUM(monto) AS monto
          FROM pagos
-        WHERE date(fecha_pago) = date('now')
+        WHERE date(fecha_pago) = ${HOY_SQL}
         GROUP BY tipo_pago, moneda
         ORDER BY tipo_pago, moneda`,
     );
@@ -193,7 +193,7 @@ export function cerrarCaja(db: DatabaseSync, input: CajaCerrarInput): CierreDia 
     `SELECT p.cliente_id, c.nombre AS cliente, p.tipo_pago, p.moneda, p.monto,
             p.tasa_cambio, p.fecha_pago
        FROM pagos p JOIN clientes c ON c.id = p.cliente_id
-      WHERE p.venta_id IS NULL AND date(p.fecha_pago) = date('now')
+      WHERE p.venta_id IS NULL AND date(p.fecha_pago) = ${HOY_SQL}
       ORDER BY p.id`,
   );
 

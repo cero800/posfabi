@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatCents, formatUsdCents, formatVesCents, parseCentsInput } from './format';
+import { formatCents, formatUsdCents, formatVesCents, hoyIso, parseCentsInput } from './format';
 
 describe('formatUsdCents', () => {
   it('formatea con miles por coma y punto decimal', () => {
@@ -49,5 +49,51 @@ describe('parseCentsInput', () => {
     expect(parseCentsInput('10.5', 'ves')).toBeNull(); // punto como decimal en Bs
     expect(parseCentsInput('10.123', 'usd')).toBeNull(); // 3 decimales
     expect(parseCentsInput('-5', 'usd')).toBeNull();
+  });
+});
+describe('hoyIso', () => {
+  /**
+   * Zonas para el test de la fecha.
+   *
+   * Entre Kiritimati (UTC+14) y Midway (UTC-11) hay 25 horas de diferencia, así
+   * que nunca caen en la misma fecha. Con las dos siempre hay al menos una que
+   * difiere de la fecha en UTC, que es justo lo que hay que distinguir.
+   */
+  const ZONAS = ['Pacific/Kiritimati', 'America/Caracas', 'Pacific/Midway'] as const;
+
+  it('da el día local, no el de UTC', () => {
+    const tzOriginal = process.env.TZ;
+    try {
+      for (const zona of ZONAS) {
+        process.env.TZ = zona;
+        const d = new Date();
+        const esperado = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        expect(hoyIso(), `con TZ=${zona}`).toBe(esperado);
+      }
+    } finally {
+      if (tzOriginal === undefined) delete process.env.TZ;
+      else process.env.TZ = tzOriginal;
+    }
+  });
+
+  it('el reloj del runner hace posible distinguir UTC de hora local', () => {
+    const tzOriginal = process.env.TZ;
+    try {
+      const fechas = new Set<string>();
+      for (const zona of [...ZONAS, 'UTC']) {
+        process.env.TZ = zona;
+        fechas.add(hoyIso());
+      }
+      // Si el runner corriera justo cuando las tres zonas coinciden con UTC, el
+      // test de arriba pasaría con cualquier implementación. Esto avisa.
+      expect(fechas.size, 'ninguna zona difiere de UTC: el test no probaría nada').toBeGreaterThan(1);
+    } finally {
+      if (tzOriginal === undefined) delete process.env.TZ;
+      else process.env.TZ = tzOriginal;
+    }
+  });
+
+  it('devuelve AAAA-MM-DD con el día y el mes a dos dígitos', () => {
+    expect(hoyIso()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 });

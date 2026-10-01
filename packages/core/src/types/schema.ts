@@ -80,6 +80,21 @@ export const NEGOCIO_CONFIG_KEYS = {
   direccion: 'negocio_direccion',
 } as const;
 
+/**
+ * Los cuatro datos del negocio, juntos.
+ *
+ * Vive aquí y no en el backend porque la interfaz los necesita igual que él: el
+ * encabezado de la barra lateral y el del `.xlsx` del reporte llevan el nombre
+ * del negocio, y la página de configuración los edita. Con el tipo en el
+ * backend, el frontend tendría que duplicarlo o importar el paquete entero.
+ */
+export interface DatosNegocio {
+  nombre: string;
+  rif: string;
+  telefono: string;
+  direccion: string;
+}
+
 /** Clave de `config` donde se guarda el destino de impresión (JSON, ver `DestinoImpresora`). */
 export const IMPRESORA_TERMICA_KEY = 'impresora_termica';
 
@@ -589,6 +604,26 @@ export type DestinoImpresora =
   | { tipo: 'red'; host: string; puerto: number }
   | { tipo: 'usb'; impresora: string }
   | { tipo: 'archivo'; ruta: string };
+
+/**
+ * Cómo se describe un destino de impresión en una línea, para un mensaje.
+ *
+ * Vive aquí y no en el backend porque los dos lo necesitan: el backend lo
+ * escribe en la bitácora y la interfaz lo muestra en pantalla después de
+ * guardar. Dos copias de esta función acabarían divergiendo, y el síntoma sería
+ * un POS que dice "impresora configurada" con un texto que el registro de
+ * eventos no tiene.
+ */
+export function describirDestino(destino: DestinoImpresora): string {
+  switch (destino.tipo) {
+    case 'red':
+      return `${destino.host}:${destino.puerto} (red)`;
+    case 'usb':
+      return `${destino.impresora} (USB)`;
+    case 'archivo':
+      return destino.ruta;
+  }
+}
 
 /** Impresora detectada por el sistema operativo. */
 export interface ImpresoraInfo {

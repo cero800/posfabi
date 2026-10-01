@@ -19,7 +19,7 @@ function factura(parcial: Partial<Factura>): Factura {
     tipo: 'credito',
     estado: 'entregada',
     fecha: isoLocal(new Date()),
-    cliente: 'Café del Centro',
+    cliente: 'Distribuidora La Esquina',
     cliente_documento: 'J-123',
     dias_credito: 15,
     negocio_nombre: '',

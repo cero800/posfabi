@@ -7,7 +7,7 @@ import ClientesPage from './ClientesPage';
 vi.mock('../services/db', () => ({
   listarClientes: vi.fn().mockResolvedValue([
     { id: 1, documento: '0', nombre: 'Consumidor Final', razon_social: null, telefono: null, email: null, direccion: null, dias_credito: 0, limite_credito: 0, activo: true, creado_en: null },
-    { id: 2, documento: 'J-123', nombre: 'Café del Centro', razon_social: null, telefono: null, email: null, direccion: null, dias_credito: 15, limite_credito: 5000, activo: true, creado_en: null },
+    { id: 2, documento: 'J-123', nombre: 'Distribuidora La Esquina', razon_social: null, telefono: null, email: null, direccion: null, dias_credito: 15, limite_credito: 5000, activo: true, creado_en: null },
   ]),
   crearCliente: vi.fn(),
   eliminarCliente: vi.fn(),
@@ -22,7 +22,7 @@ beforeEach(() => {
 describe('ClientesPage', () => {
   it('no muestra a Consumidor Final como cliente', async () => {
     render(<ClientesPage />);
-    await screen.findByText('Café del Centro');
+    await screen.findByText('Distribuidora La Esquina');
     expect(screen.queryByText('Consumidor Final')).not.toBeInTheDocument();
     expect(screen.getByText('J-123')).toBeInTheDocument();
   });
@@ -31,7 +31,7 @@ describe('ClientesPage', () => {
     const user = userEvent.setup();
     vi.mocked(crearCliente).mockResolvedValue(9 as never);
     render(<ClientesPage />);
-    await screen.findByText('Café del Centro');
+    await screen.findByText('Distribuidora La Esquina');
 
     await user.click(screen.getByRole('button', { name: /Nuevo cliente/ }));
     const dialog = screen.getByRole('dialog');
@@ -47,7 +47,7 @@ describe('ClientesPage', () => {
     const user = userEvent.setup();
     vi.mocked(crearCliente).mockResolvedValue(9 as never);
     render(<ClientesPage />);
-    await screen.findByText('Café del Centro');
+    await screen.findByText('Distribuidora La Esquina');
 
     await user.click(screen.getByRole('button', { name: /Nuevo cliente/ }));
     const dialog = screen.getByRole('dialog');
@@ -61,8 +61,8 @@ describe('ClientesPage', () => {
   it('elimina un cliente con confirmación', async () => {
     const user = userEvent.setup();
     render(<ClientesPage />);
-    await screen.findByText('Café del Centro');
-    await user.click(screen.getByRole('button', { name: /Eliminar Café del Centro/ }));
+    await screen.findByText('Distribuidora La Esquina');
+    await user.click(screen.getByRole('button', { name: /Eliminar Distribuidora La Esquina/ }));
     expect(confirm).toHaveBeenCalled();
     expect(eliminarCliente).toHaveBeenCalledWith(2);
   });

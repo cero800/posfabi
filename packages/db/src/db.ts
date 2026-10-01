@@ -244,23 +244,38 @@ export function ejecutarScript(db: DatabaseSync, sql: string): void {
 //---------------------------------------------------------------------------
 
 /**
+ * La expresión SQLite que da "hoy, en la tienda".
+ *
+ * Es `date('now','localtime')` y no `date('now')`, y la diferencia son las cuatro
+ * horas de la tarde. `date('now')` devuelve la fecha en UTC, así que una venta
+ * hecha a las nueve de la noche en Caracas quedaba archivada con la fecha de
+ * mañana. Para el dueño de una tienda eso no es un detalle de formato: la venta
+ * no entraba en el resumen del día, y —peor— `efectivoDelDia` no la contaba en
+ * el efectivo esperado del cierre, de modo que el cierre de caja salía con un
+ * faltante exacto de lo que se vendió en la tarde. Y como la tienda se cierra de
+ * noche, no era un caso raro: era la mitad de las ventas del día.
+ *
+ * Vive en una constante y no repetido por los SQL porque todos tienen que
+ * concordar. Si `ventas` archivara con una expresión y `caja` buscara con otra,
+ * el faltante volvería a aparecer, pero repartido, que es más difícil de
+ * encontrar que este.
+ *
+ * La fecha del nombre de los respaldos sí es UTC, a propósito y por otro motivo
+ * (ver `backup.ts`): un nombre de archivo no tiene que coincidir con el día que
+ * el dueño tiene en la cabeza, solo ser único y ordenar bien.
+ */
+export const HOY_SQL = "date('now','localtime')";
+
+/**
  * La fecha de hoy tal como la ve SQLite, en `AAAA-MM-DD`.
  *
- * Viene de `date('now')` y no de `new Date()` a propósito, por dos razones.
- * Una: los reportes filtran con `date('now')`, así que la fecha con la que se
- * archiva una venta tiene que ser la misma expresión con la que se va a buscar;
- * si una usara el reloj de JavaScript y la otra no, una venta de medianoche
- * quedaría en un día que el resumen no encuentra. Dos: `toISOString()` convierte
- * a UTC, así que a las nueve de la noche en Caracas una venta de "hoy" se
- * archivaría como mañana. El SQLite tampoco corrige eso, pero al menos las dos
- * mitades del sistema piensan en la misma cosa.
- *
- * A las 00:30 hora de Caracas SQLite también da el día anterior. Se documenta
- * en vez de esconderse: es el mismo criterio que usa el reporte, y lo que
- * importa es que caja y ventas coincidan.
+ * Sale de `HOY_SQL`. No se usa el reloj de JavaScript para calcularla porque los
+ * reportes filtran con la misma expresión: si la fecha con la que se archiva una
+ * venta viniera de un cálculo distinto al que la va a buscar, una venta de
+ * medianoche quedaría en un día que el resumen no encuentra.
  */
 export function hoy(db: DatabaseSync): string {
-  return qObligatorio<{ h: string }>(db, 'Fecha actual', "SELECT date('now') AS h").h;
+  return qObligatorio<{ h: string }>(db, 'Fecha actual', `SELECT ${HOY_SQL} AS h`).h;
 }
 
 export { DatabaseSync };

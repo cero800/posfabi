@@ -13,7 +13,7 @@ beforeEach(() => {
   useCarrito.getState().vaciar();
   useCarrito.setState({
     lineas: [
-      { producto_id: 1, codigo: 'P1', nombre: 'Pan Canilla', unidad: 'unidad', precio: 1000, cantidad: 1 },
+      { producto_id: 1, codigo: 'P1', nombre: 'Cuaderno Carta', unidad: 'unidad', precio: 1000, cantidad: 1 },
     ],
   });
   useSesion.setState({ tasa: 36.85, operador: { id: 1, nombre: 'Ana', rol: 'admin', activo: true } });

@@ -10,7 +10,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 import type { Rutas } from './paths.js';
-import { abrir, enMemoria, hoy, qUno } from './db.js';
+import { HOY_SQL, abrir, enMemoria, hoy, qUno } from './db.js';
 import { escribirConfig as escribirConfigReal } from './config.js';
 import { PIN_ADMIN_POR_DEFECTO } from './seed.js';
 
@@ -117,7 +117,7 @@ export function venta(db: DatabaseSync, opciones: { clienteId?: number; operador
     db
       .prepare(
         `INSERT INTO ventas (cliente_id, numero_factura, tipo, fecha, total, moneda, tasa_cambio, operador_id)
-         VALUES (?, ?, 'contado', date('now'), 0, 'usd', 1, ?)`,
+         VALUES (?, ?, 'contado', ${HOY_SQL}, 0, 'usd', 1, ?)`,
       )
       .run(clienteId, siguiente, opciones.operadorId ?? null).lastInsertRowid,
   );
@@ -128,7 +128,7 @@ export function abrirCaja(db: DatabaseSync, operadorId: number): number {
   return Number(
     db
       .prepare(
-        `INSERT INTO cajas (fecha, operador_id, estado) VALUES (date('now'), ?, 'abierta')`,
+        `INSERT INTO cajas (fecha, operador_id, estado) VALUES (${HOY_SQL}, ?, 'abierta')`,
       )
       .run(operadorId).lastInsertRowid,
   );

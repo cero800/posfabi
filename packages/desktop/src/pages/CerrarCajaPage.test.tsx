@@ -36,12 +36,12 @@ const resumen = {
   producciones: [],
   ventas: [
     { venta_id: 1, numero_factura: 1, cliente: 'Mostrador', tipo: 'contado', monto: 5000, devuelto: 0, estado: 'entregada', tasa_cambio: 36.85 },
-    { venta_id: 2, numero_factura: 2, cliente: 'Pan S.A.', tipo: 'credito', monto: 3000, devuelto: 1000, estado: 'entregada', tasa_cambio: 36.85 },
+    { venta_id: 2, numero_factura: 2, cliente: 'Librería del Centro', tipo: 'credito', monto: 3000, devuelto: 1000, estado: 'entregada', tasa_cambio: 36.85 },
   ],
   pagos_efectivo_usd: 5000,
   pagos_efectivo_ves: 36850,
   devoluciones: [
-    { id: 1, venta_id: 2, numero_factura: 2, cliente: 'Pan S.A.', monto: 1000, motivo: 'pan deteriorado', operador_nombre: 'Ana', fecha_devolucion: '2026-09-04', detalle: [{ producto_id: 3, nombre: 'Pan Canilla', cantidad: 5, precio_unitario: 200, subtotal: 1000 }] },
+    { id: 1, venta_id: 2, numero_factura: 2, cliente: 'Librería del Centro', monto: 1000, motivo: 'artículo devuelto', operador_nombre: 'Ana', fecha_devolucion: '2026-09-04', detalle: [{ producto_id: 3, nombre: 'Cuaderno Carta', cantidad: 5, precio_unitario: 200, subtotal: 1000 }] },
   ],
   deudores: [],
 };
@@ -102,7 +102,7 @@ describe('CerrarCajaPage', () => {
     expect(await screen.findByText('Cuenta del día')).toBeInTheDocument();
     expect(screen.getByText(/#0001/)).toBeInTheDocument();
     expect(screen.getByText('Mostrador')).toBeInTheDocument();
-    expect(screen.getByText('Pan S.A.')).toBeInTheDocument();
+    expect(screen.getByText('Librería del Centro')).toBeInTheDocument();
     expect(screen.getAllByText('$50.00').length).toBeGreaterThan(0);
     expect(screen.getByText('Bs 1.842,50')).toBeInTheDocument();
     expect(screen.getByLabelText(/Tasa de cierre/)).toHaveValue(36.85);
@@ -152,10 +152,10 @@ describe('CerrarCajaPage', () => {
     await screen.findByText('Cuenta del día');
 
     expect(screen.getByText('Devoluciones del día (perdido)')).toBeInTheDocument();
-    expect(screen.getByText(/pan deteriorado/)).toBeInTheDocument();
+    expect(screen.getByText(/artículo devuelto/)).toBeInTheDocument();
     expect(screen.getAllByText('-$10.00').length).toBeGreaterThan(0);
     expect(screen.getAllByText('$70.00').length).toBeGreaterThan(0);
-    expect(screen.getByText(/Pan Canilla × 5/)).toBeInTheDocument();
+    expect(screen.getByText(/Cuaderno Carta × 5/)).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /Cerrar caja/ }));
     await user.click(screen.getByRole('button', { name: /Sí, cerrar/ }));

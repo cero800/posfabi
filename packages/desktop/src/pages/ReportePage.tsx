@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { BarChart3, FileSpreadsheet, FileText, RefreshCw } from 'lucide-react';
 import type { Factura, ResumenDia } from '@tienda/core';
-import { getFactura, guardarReporteExcel, resumenDia } from '../services/db';
-import { formatUsdCents } from '../lib/format';
+import { getFactura, guardarReporteExcel, obtenerDatosNegocio, resumenDia } from '../services/db';
+import { formatUsdCents, hoyIso } from '../lib/format';
 import { Card, CardHeader } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Table, THead, Th, Td } from '../components/ui/Table';
@@ -13,8 +13,9 @@ import { FacturaModal } from '../components/ui/FacturaModal';
 import { DatePicker } from '../components/ui/DatePicker';
 
 export default function ReportePage() {
-  const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10));
+  const [fecha, setFecha] = useState(hoyIso());
   const [dato, setDato] = useState<ResumenDia | null>(null);
+  const [negocio, setNegocio] = useState('');
   const [cargando, setCargando] = useState(true);
   const [factura, setFactura] = useState<Factura | null>(null);
   const [cargandoFactura, setCargandoFactura] = useState(false);
@@ -32,6 +33,16 @@ export default function ReportePage() {
   useEffect(() => {
     cargar(fecha);
   }, [fecha]);
+
+  // El nombre va en la primera fila del `.xlsx`. Va aparte del `resumenDia` a
+  // propósito: es un dato del negocio, no del día, y no tiene que volver a
+  // pedirse cada vez que se cambia de fecha. Si falla, el archivo sale con
+  // "Tienda" en vez de no salir.
+  useEffect(() => {
+    obtenerDatosNegocio()
+      .then((d) => setNegocio(d.nombre.trim()))
+      .catch(() => setNegocio(''));
+  }, []);
 
   const ventasEntregadas = (dato?.ventas ?? []).filter((v) => v.estado === 'entregada');
   const totalVentas = ventasEntregadas.reduce((acc, v) => acc + v.monto, 0);
@@ -60,7 +71,7 @@ export default function ReportePage() {
       wb.created = new Date();
       const ws = wb.addWorksheet('Reporte');
 
-      ws.addRow(['Kalientico — Reporte del día', fecha]).font = { bold: true, size: 14 };
+      ws.addRow([`${negocio || 'Tienda'} — Reporte del día`, fecha]).font = { bold: true, size: 14 };
       ws.addRow([]);
       ws.addRow(['Ventas entregadas', (totalVentas / 100).toFixed(2), 'US$']);
       ws.addRow(['Ventas en Bs', (totalVentasBs / 100).toFixed(2), 'Bs']);
@@ -99,7 +110,7 @@ export default function ReportePage() {
       );
       ws.addRow([]);
 
-      ws.addRow(['Producción']).font = { bold: true };
+      ws.addRow(['Entradas de mercancía']).font = { bold: true };
       ws.addRow(['Producto', 'Cantidad', 'Costo unit. (US$)']);
       dato.entradas.forEach((m) => ws.addRow([m.producto, m.cantidad, (m.costo_unitario / 100).toFixed(2)]));
 
@@ -125,7 +136,7 @@ export default function ReportePage() {
     <div>
       <PageHeader
         title="Reporte del día"
-        subtitle="Resumen de producción, ventas y efectivo"
+        subtitle="Resumen de entradas de mercancía, ventas y efectivo"
         actions={
           <div className="flex items-center gap-2">
             <DatePicker value={fecha} onChange={setFecha} aria-label="Fecha del reporte" />
@@ -166,9 +177,9 @@ export default function ReportePage() {
           </Card>
 
           <Card>
-            <CardHeader title="Producción" subtitle={`${dato.entradas.length} registros`} />
+            <CardHeader title="Entradas de mercancía" subtitle={`${dato.entradas.length} registros`} />
             {dato.entradas.length === 0 ? (
-              <EmptyState message="Sin producción" />
+              <EmptyState message="Sin entradas de mercancía" />
             ) : (
               <Table>
                 <THead>
