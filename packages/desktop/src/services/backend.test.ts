@@ -159,7 +159,9 @@ describe('Arranque del backend', () => {
     await conectar();
 
     expect(invoke).toHaveBeenCalledWith('rutas_app');
-    expect(pedido?.program).toBe('tienda-db');
+    // La ruta de `externalBin` entera, no el nombre del binario: es lo que
+    // `tauri-plugin-shell` compara contra la lista de `tauri.conf.json`.
+    expect(pedido?.program).toBe('binaries/tienda-db');
     // Sin argumentos: el backend no lee órdenes, solo el protocolo.
     expect(pedido?.args).toEqual([]);
     expect(pedido?.options.env).toEqual({
@@ -193,7 +195,9 @@ describe('Arranque del backend', () => {
   it('da error claro cuando el ejecutable no está', async () => {
     spawn.mockRejectedValueOnce(new Error('no existe el archivo'));
 
-    await expect(llamar('listar_clientes')).rejects.toThrow(/No se pudo lanzar «tienda-db»/);
+    await expect(llamar('listar_clientes')).rejects.toThrow(
+      /No se pudo lanzar «binaries\/tienda-db»/,
+    );
   });
 });
 

@@ -29,8 +29,23 @@ import { invoke } from '@tauri-apps/api/core';
 import { Command } from '@tauri-apps/plugin-shell';
 import type { Child } from '@tauri-apps/plugin-shell';
 
-/** El nombre con el que el sidecar aparece en `externalBin` y en la capability. */
-const PROGRAMA = 'tienda-db';
+/**
+ * Cómo se llama el sidecar.
+ *
+ * No es el nombre del binario sino la entrada de `bundle > externalBin` en
+ * `tauri.conf.json`, carpeta incluida. `tauri-plugin-shell` busca el programa
+ * comparando este texto, tal cual, con esa lista; si no coincide devuelve
+ * «sidecar not configured under `bundle > externalBin`» y no llega ni a
+ * intentarlo. Es la misma trampa en `capabilities/default.json`, donde el `name`
+ * del scope también tiene que ser la ruta entera. Los docs de Tauri lo dicen
+ * con un ejemplo (`Command.sidecar('binaries/my-sidecar')`) que parece un descuido
+ * y no lo es.
+ *
+ * Lo que sí es el nombre pelado es lo que Tauri ejecuta: al resolver la ruta se
+ * queda con el último componente, `tienda-db`, y lo busca junto a su propio
+ * ejecutable.
+ */
+const PROGRAMA = 'binaries/tienda-db';
 
 /** El sobre que devuelve el backend. */
 type Sobre<T> = { ok: true; data: T } | { ok: false; error: { mensaje: string; codigo?: string } };
@@ -114,8 +129,12 @@ export function reiniciarCliente(): void {
 }
 
 function arrancar(): Promise<Conexion> {
-  const pendiente = resolverRutas().then(lanzar).then(confirmar);
-  conexion = pendiente;
+  // Guardar la promesa en `conexion` ANTES de que empiece el trabajo asíncrono
+  // evita que dos llamadas concurrentes —y en el montaje las hay, porque React
+  // ejecuta los efectos dos veces en modo estricto— creen dos procesos de
+  // backend. Con dos procesos sobre la misma base, el segundo muere con
+  // «database is locked» y se lleva por delante la caja.
+  const pendiente = (conexion = resolverRutas().then(lanzar).then(confirmar));
   // Un arranque fallido no debe dejar el POS sin backend para el resto de la
   // sesión: se suelta la conexión para que la siguiente llamada lo reintente.
   pendiente.catch(() => {

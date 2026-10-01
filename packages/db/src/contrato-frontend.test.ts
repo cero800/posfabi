@@ -110,3 +110,69 @@ describe('Contrato entre la interfaz y el backend', () => {
     expect(enDb).toContain('necesita_configuracion');
   });
 });
+
+//---------------------------------------------------------------------------
+// El nombre del sidecar
+//---------------------------------------------------------------------------
+
+/**
+ * Los tres sitios donde tiene que coincidir el nombre del backend empaquetado.
+ *
+ * Es un contrato igual de real que el de los procedures, y rompió igual de
+ * callado: `tauri-plugin-shell` busca el programa comparando el texto que le
+ * pasa la interfaz con la lista de `externalBin` y con el `name` del scope de la
+ * capability. Con uno de los tres distinto, `spawn()` se rechaza con «sidecar not
+ * configured under `bundle > externalBin``, la interfaz se queda sin backend y
+ * todo lo demás —código, tipos, pruebas— sigue en verde. Nada más lo detecta.
+ *
+ * Lo que compara es la ruta de `externalBin` con su carpeta, no el nombre del
+ * binario: `binaries/tienda-db`, no `tienda-db`.
+ */
+function nombreDelSidecar(): string {
+  const fuente = fs.readFileSync(path.join(RAIZ, 'desktop', 'src/services/backend.ts'), 'utf8');
+  const encontrado = /^const PROGRAMA = '([^']+)';$/m.exec(fuente);
+  if (encontrado === null) {
+    throw new Error(
+      'No se encontró `const PROGRAMA = ...` en desktop/src/services/backend.ts. ' +
+        'Si lo cambiaron de sitio hay que arreglar la ruta de esta prueba.',
+    );
+  }
+  return encontrado[1] as string;
+}
+
+function leerJson<T>(relativo: string): T {
+  return JSON.parse(fs.readFileSync(path.join(RAIZ, 'desktop', relativo), 'utf8')) as T;
+}
+
+describe('Nombre del backend empaquetado', () => {
+  it('el que pide la interfaz es una entrada de externalBin', () => {
+    const conf = leerJson<{ bundle: { externalBin?: string[] } }>('src-tauri/tauri.conf.json');
+    const programa = nombreDelSidecar();
+
+    expect(
+      conf.bundle.externalBin ?? [],
+      `La interfaz lanza «${programa}», que no está en bundle > externalBin ` +
+        `(${(conf.bundle.externalBin ?? []).join(', ') || 'vacío'}). ` +
+        'Tauri compara el texto tal cual: o se cambia en los dos sitios, o no arranca.',
+    ).toContain(programa);
+  });
+
+  it('el scope de la capability que lo lanza tiene el mismo nombre', () => {
+    const cap = leerJson<{ permissions: unknown[] }>('src-tauri/capabilities/default.json');
+    const programa = nombreDelSidecar();
+    // El scope está enterrado en un objeto con `identifier` y `allow`; se busca
+    // por forma y no por posición para que reordenar el array no rompa nada.
+    const permitidos = cap.permissions
+      .filter((p): p is { identifier: string; allow?: { name: string; sidecar?: boolean }[] } =>
+        typeof p === 'object' && p !== null && 'identifier' in p,
+      )
+      .flatMap((p) => (p.identifier === 'shell:allow-spawn' ? (p.allow ?? []) : []))
+      .filter((s) => s.sidecar === true)
+      .map((s) => s.name);
+
+    expect(
+      permitidos,
+      `La capability lanza ${JSON.stringify(permitidos)} y la interfaz pide «${programa}».`,
+    ).toContain(programa);
+  });
+});

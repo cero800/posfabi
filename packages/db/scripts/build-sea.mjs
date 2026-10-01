@@ -1,12 +1,26 @@
-// Empaquetado del backend en un único ejecutable de Windows (Node SEA).
+// Empaquetado del backend en un único ejecutable (Node SEA).
 //
 // Tauri lanza el backend como "sidecar", y para eso exige un binario en
 //   src-tauri/binaries/<nombre>-<tripleta-de-objetivo>[.exe]
-// En Windows x64 la tripleta es `x86_64-pc-windows-msvc`.
+// En Windows x64 la tripleta es `x86_64-pc-windows-msvc`; en Linux x64 es
+// `x86_64-unknown-linux-gnu`.
 //
-// El resultado es un `node.exe` con el bundle inyectado dentro, así que pesa
-// como Node (unos 120 MB) y lleva su propio runtime. Es lo que permite que el
-// `.exe` del POS no dependa de que haya un Node instalado en la PC de la tienda.
+// El resultado es un `node` con el bundle inyectado dentro, así que pesa como
+// Node (unos 120 MB) y lleva su propio runtime. Es lo que permite que el `.exe`
+// del POS no dependa de que haya un Node instalado en la PC de la tienda.
+//
+// ## Para qué sirve más de una plataforma
+//
+// El destino es Windows, y el `.exe` de la tienda solo se puede generar ahí. Pero
+// el script construye el binario *de la máquina en la que corre*, y eso permite
+// dos cosas que en Windows no se pueden hacer:
+//
+//   - `tauri dev` en Linux, que es la única forma de probar el camino real
+//     (el mismo `shell.sidecar` y el mismo JSON-RPC por stdio que usará el
+//     `.exe`) sin estar en la PC de la tienda.
+//   - Dejar el binario de Windows intacto mientras se develops en otro sistema:
+//     cada plataforma escribe en `bin/` y en `src-tauri/binaries/` con su propio
+//     nombre, así que no se pisan.
 //
 // ## Cómo se hace
 //
@@ -16,8 +30,8 @@
 //                  La generación del blob es un flag nativo de Node.
 //
 //   Node 24.x      `node --experimental-sea-config sea-config.json` genera el
-//                  blob, y hay que inyectarlo en una copia de node.exe con
-//                  `postject`.
+//                  blob, y hay que inyectarlo en una copia del ejecutable de Node
+//                  con `postject`.
 //
 // El script detecta la versión y hace lo que corresponda, así que no hay que
 // cambiar nada al actualizar Node.
@@ -42,9 +56,47 @@ const BLOB = path.join(RAIZ, 'sea-prep.blob');
 const CONFIG = path.join(RAIZ, 'sea-config.json');
 
 const NOMBRE_APP = 'tienda-db';
-// Tauri exige el sufijo con la tripleta del objetivo; en Windows, además, `.exe`.
-const TRIPLETA = 'x86_64-pc-windows-msvc';
-const SALIDA = path.join(DESTINO_DIR, `${NOMBRE_APP}-${TRIPLETA}.exe`);
+
+/**
+ * La tripleta de destino que Tauri exige en el nombre del sidecar.
+ *
+ * Tauri no busca un binario genérico: mira por el nombre con el sufijo de la
+ * plataforma de *compilación*. Es el mismo criterio de `externalBin`, y por eso
+ * el mapa está escrito aquí y no se deduce: son cuatro combinaciones y una tabla
+ * se lee de un vistazo, mientras que un `switch` con `process.arch` de por medio
+ * obliga a saltar entre el `process.platform` y el `arch` para entender qué sale.
+ *
+ * Solo están las plataformas donde esto se usa: la tienda va en Windows x64 y el
+ * desarrollo en Linux. Un `arch` raro —Windows ARM, Linux de 32 bits— falla a
+ * propósito en vez de producir un nombre que Tauri no va a encontrar.
+ */
+const TRIPLETAS = {
+  'win32:x64': 'x86_64-pc-windows-msvc',
+  'linux:x64': 'x86_64-unknown-linux-gnu',
+  'linux:arm64': 'aarch64-unknown-linux-gnu',
+  'darwin:x64': 'x86_64-apple-darwin',
+  'darwin:arm64': 'aarch64-apple-darwin',
+};
+
+function tripletaDeEstaPlataforma() {
+  const clave = `${process.platform}:${process.arch}`;
+  const tripleta = TRIPLETAS[clave];
+  if (tripleta === undefined) {
+    throw new Error(
+      `No hay tripleta conocida para ${clave}. Las que este script sabe construir son: ` +
+        Object.keys(TRIPLETAS).join(', ') +
+        '. Si la app se va a empaquetar para esa plataforma, hay que añadirla aquí y a ' +
+        'las plataformas de `tauri.conf.json`.',
+    );
+  }
+  return tripleta;
+}
+
+const TRIPLETA = tripletaDeEstaPlataforma();
+// Solo en Windows el ejecutable lleva extensión: sin ella Tauri no lo encuentra.
+const EXTENSION = process.platform === 'win32' ? '.exe' : '';
+const NOMBRE_SALIDA = `${NOMBRE_APP}-${TRIPLETA}${EXTENSION}`;
+const SALIDA = path.join(DESTINO_DIR, NOMBRE_SALIDA);
 // Dónde lo espera Tauri.
 const DESTINO_TAURI = path.join(
   RAIZ,
@@ -52,7 +104,7 @@ const DESTINO_TAURI = path.join(
   'desktop',
   'src-tauri',
   'binaries',
-  `${NOMBRE_APP}-${TRIPLETA}.exe`,
+  NOMBRE_SALIDA,
 );
 
 function log(msg) {
@@ -61,7 +113,7 @@ function log(msg) {
 
 function ejecutar(cmd, args, opciones = {}) {
   log(`$ ${cmd} ${args.join(' ')}`);
-  return execFileSync(cmd, args, { stdio: 'inherit', ...opiones });
+  return execFileSync(cmd, args, { stdio: 'inherit', ...opciones });
 }
 
 function versionNode() {
@@ -125,19 +177,13 @@ function buscarFusible(exe) {
 }
 
 async function main() {
-  if (process.platform !== 'win32') {
-    throw new Error(
-      'Este script genera el ejecutable de Windows, que es el destino de la app, ' +
-        'y no se puede producir en otro sistema. El backend sí se puede probar en ' +
-        'cualquiera con `pnpm --filter @tienda/db start`, o en HTTP con `--http`.',
-    );
-  }
-
   const { mayor, menor } = versionNode();
   const nativo = mayor > 25 || (mayor === 25 && menor >= 5);
   if (!nativo && mayor < 20) {
     throw new Error(`Node ${process.versions.node} es demasiado antiguo: se necesita 20 o superior.`);
   }
+
+  log(`destino: ${TRIPLETA}${EXTENSION}`);
 
   fs.mkdirSync(DESTINO_DIR, { recursive: true });
   fs.rmSync(SALIDA, { force: true });
@@ -170,10 +216,10 @@ async function main() {
     const fusible = buscarFusible(process.execPath);
     log(`   volcando el fusible ${fusible}`);
 
-    // El ejecutable es una copia de node.exe con el blob inyectado. Se copia
-    // primero y se inyecta sobre la copia: el node.exe que está corriendo este
-    // script no se toca, que en Windows está bloqueado mientras se ejecuta y en
-    // Linux se corrompería.
+    // El ejecutable es una copia del binario de Node con el blob inyectado. Se
+    // copia primero y se inyecta sobre la copia: el ejecutable que está corriendo
+    // este script no se toca, que en Windows está bloqueado mientras se ejecuta y
+    // en Linux se corrompería.
     fs.copyFileSync(process.execPath, SALIDA);
     ejecutar(
       'npx',
@@ -199,6 +245,15 @@ async function main() {
   if (!fs.existsSync(SALIDA)) {
     throw new Error(`No se generó el ejecutable esperado en ${SALIDA}`);
   }
+
+  // Sin esto el sidecar existe pero no arranca, y el error que sale es de Tauri
+  // ("no se encontró el binario" o un permiso denegado) en vez de algo que diga
+  // "falta el permiso de ejecución". `copyFileSync` sí lo copia, pero `postject`
+  // reescribe el archivo y en Linux se lo quita.
+  //
+  // En Windows el permiso no existe, pero `chmod` no hace daño: el sistema de
+  // archivos lo ignora y el archivo sigue igual.
+  fs.chmodSync(SALIDA, 0o755);
 
   log('3/5 comprobando que el ejecutable arranca');
   // Esto es el entregable de la fase: un archivo que existe no es lo mismo que
@@ -287,12 +342,24 @@ async function main() {
   log('4/5 copiando al directorio de Tauri');
   fs.mkdirSync(path.dirname(DESTINO_TAURI), { recursive: true });
   fs.copyFileSync(SALIDA, DESTINO_TAURI);
+  // La copia necesita el permiso otra vez: `copyFileSync` sí lo trae, pero se
+  // deja explícito porque el directorio `binaries/` está en `.gitignore` y
+  // nunca pasa por un control de versiones que avise de un cambio de permisos.
+  fs.chmodSync(DESTINO_TAURI, 0o755);
 
   log('5/5 listo');
   const mb = (fs.statSync(SALIDA).size / 1024 / 1024).toFixed(1);
   log(`   ${SALIDA} (${mb} MB)`);
   log(`   copiado a ${DESTINO_TAURI}`);
-  log('   siguiente paso: pnpm --filter @tienda/desktop tauri build');
+  if (process.platform === 'win32') {
+    log('   siguiente paso: pnpm --filter @tienda/desktop tauri build');
+  } else {
+    // En una plataforma que no es la de la tienda el instalador no sirve de nada,
+    // así que no se sugiere: lo que se sugiere es probar la app, que es para lo
+    // que se ha generado.
+    log('   siguiente paso: pnpm --filter @tienda/desktop tauri dev');
+    log('   (este binario no es el de la tienda: hay que repetir esto en Windows)');
+  }
 }
 
 main().catch((e) => {

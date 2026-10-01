@@ -1,13 +1,13 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Permisos de la ventana principal. Todo lo demás —disco, base de datos, impresora— lo tiene el backend, que corre como proceso aparte: aquí solo se le puede lanzar y escribirle por la entrada estándar.",
+  "description": "Permisos de la ventana principal. Todo lo demás —disco, base de datos, impresora— lo tiene el backend, que corre como proceso aparte: aquí solo se le puede lanzar y escribirle por la entrada estándar. El `name` del scope es la entrada de `bundle > externalBin` con su carpeta, no el nombre del binario: es lo que el frontend le pasa a `Command.sidecar` y lo que el plugin compara.",
   "windows": ["main"],
   "permissions": [
     "core:default",
     {
       "identifier": "shell:allow-spawn",
-      "allow": [{ "name": "tienda-db", "sidecar": true }]
+      "allow": [{ "name": "binaries/tienda-db", "sidecar": true }]
     },
     "shell:allow-stdin-write"
   ]
