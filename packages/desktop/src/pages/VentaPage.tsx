@@ -17,21 +17,32 @@ import { STOCK_BAJO } from '../lib/stock';
 import { Card, CardHeader } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
-import { Select } from '../components/ui/Select';
 import { Modal } from '../components/ui/Modal';
 import { PageLoader } from '../components/ui/Spinner';
 import { FacturaModal } from '../components/ui/FacturaModal';
-import { ProductoCard } from './venta/ProductoCard';
 import ClienteAutocomplete, { esMostrador } from './venta/ClienteAutocomplete';
 import PrecioEspecialModal from './venta/PrecioEspecialModal';
 import CobroModal from './venta/CobroModal';
+import { CatalogoSecciones } from './venta/CatalogoSecciones';
+import { PestanasSeccion } from './venta/PestanasSeccion';
+import {
+  bloques as bloquesDe,
+  conCabeceras,
+  desagrupar,
+  seccionesRaiz,
+  hijasDe,
+  etiquetaSinCategoria,
+  SIN_CATEGORIA_SEL,
+  TODAS,
+  type Seleccion,
+} from './venta/secciones';
 
 export default function VentaPage() {
   const tasa = useSesion((s) => s.tasa);
 
   const [productos, setProductos] = useState<Producto[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
-  const [categoriaFiltro, setCategoriaFiltro] = useState('');
+  const [seleccion, setSeleccion] = useState<Seleccion>(TODAS);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [stock, setStock] = useState<Record<number, number>>({});
   const [busqueda, setBusqueda] = useState('');
@@ -102,22 +113,46 @@ export default function VentaPage() {
 
   const efectivoDe = (p: Producto) => preciosEspeciales[p.id] ?? p.precio_base;
 
+  // Catálogo ya filtrado por la sección elegida y por lo que se haya escrito.
+  // El orden importa: la sección va primero a propósito, porque en un catálogo de
+  // papelería el cajero casi nunca busca por nombre —busca "cuaderno
+  // universitario" y le aparecen treinta—, lo que hace es mirar una sección y
+  // recorrerla. La búsqueda sigue funcionando encima de la sección.
   const filtrados = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
     return productos.filter((p) => {
-      // El filtro de categoría va antes que la búsqueda a propósito: en un
-      // catálogo de papelería el cajero casi nunca busca por nombre —busca
-      // "cuaderno universitario" y aparecen treinta—, lo que hace es mirar una
-      // sección y recorrerla. La búsqueda sigue funcionando encima de la sección.
-      if (categoriaFiltro === 'sin-categoria') {
+      if (seleccion.nivel === 'sin-categoria') {
         if (p.categoria_id != null) return false;
-      } else if (categoriaFiltro !== '' && String(p.categoria_id ?? '') !== categoriaFiltro) {
-        return false;
+      } else if (seleccion.nivel === 'raiz' || seleccion.nivel === 'hija') {
+        if (p.categoria_id !== seleccion.id) return false;
       }
       if (!q) return true;
       return p.nombre.toLowerCase().includes(q) || p.codigo.toLowerCase().includes(q);
     });
-  }, [productos, busqueda, categoriaFiltro]);
+  }, [productos, busqueda, seleccion]);
+
+  const secciones = useMemo(() => seccionesRaiz(categorias, productos), [categorias, productos]);
+  const sinCategoria = useMemo(
+    () => etiquetaSinCategoria(categorias, productos),
+    [categorias, productos],
+  );
+  // Las hijas de la sección en la que estamos, este el nivel que sea: con una
+  // subsección activa sigue haciendo falta la fila para poder volver a subir.
+  const hijas = useMemo(() => {
+    if (seleccion.nivel === 'raiz') return hijasDe(categorias, seleccion.id);
+    if (seleccion.nivel === 'hija') return hijasDe(categorias, seleccion.raiz);
+    return [];
+  }, [categorias, seleccion]);
+
+  const bloques = useMemo(
+    () => bloquesDe(categorias, filtrados, seleccion),
+    [categorias, filtrados, seleccion],
+  );
+
+  // Escribir en el buscador desagrupa el catálogo: ver arriba por qué. Y ya en
+  // esa lista plana no tiene sentido contar qué secciones quedan.
+  const agrupado = !desagrupar(busqueda);
+  const mostrarCabeceras = agrupado && conCabeceras(categorias, filtrados, seleccion);
 
   const subtotal = useMemo(() => lineas.reduce((acc, l) => acc + Math.round(l.precio * l.cantidad), 0), [lineas]);
 
@@ -174,32 +209,15 @@ export default function VentaPage() {
       <div className="flex min-w-0 flex-1 flex-col gap-3">
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
               placeholder="Buscar producto por nombre o código…"
-              className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-9 pr-3 text-sm shadow-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+              aria-label="Buscar producto"
+              className="w-full rounded-lg border border-input bg-background py-2 pl-9 pr-3 text-sm text-foreground shadow-card transition placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
           </div>
-          {categorias.length > 0 && (
-            <div className="w-44 shrink-0">
-              <Select
-                aria-label="Filtrar por categoría"
-                value={categoriaFiltro}
-                onChange={(e) => setCategoriaFiltro(e.target.value)}
-                className="py-1.5 text-sm"
-              >
-                <option value="">Todo el catálogo</option>
-                {categorias.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.nombre}
-                  </option>
-                ))}
-                <option value="sin-categoria">Sin categoría</option>
-              </Select>
-            </div>
-          )}
           {busqueda && (
             <Button variant="ghost" size="sm" onClick={() => setBusqueda('')} aria-label="Limpiar búsqueda">
               <X className="h-4 w-4" />
@@ -207,23 +225,21 @@ export default function VentaPage() {
           )}
         </div>
 
-        {filtrados.length === 0 ? (
-          <p className="py-10 text-center text-sm text-gray-500">Sin productos que coincidan.</p>
-        ) : (
-          <div className="grid grid-cols-2 gap-2 overflow-y-auto sm:grid-cols-3 xl:grid-cols-4">
-            {filtrados.map((p) => (
-              <ProductoCard
-                key={p.id}
-                nombre={p.nombre}
-                codigo={p.codigo}
-                precio={efectivoDe(p)}
-                stock={stock[p.id]}
-                onAgregar={() => abrirCantidad(p)}
-                deshabilitado={(stock[p.id] ?? Infinity) <= 0}
-              />
-            ))}
-          </div>
-        )}
+        <PestanasSeccion
+          secciones={secciones}
+          sinCategoria={sinCategoria}
+          hijas={hijas}
+          seleccion={seleccion}
+          onCambiar={setSeleccion}
+        />
+
+        <CatalogoSecciones
+          bloques={agrupado ? bloques : [{ categoriaId: null, titulo: '', productos: filtrados }]}
+          mostrarCabeceras={mostrarCabeceras}
+          precioDe={efectivoDe}
+          stock={stock}
+          onAgregar={abrirCantidad}
+        />
       </div>
 
       {/* Carrito */}
@@ -240,17 +256,17 @@ export default function VentaPage() {
 
           <div className="min-h-0 flex-1 overflow-y-auto px-3 py-2">
             {lineas.length === 0 ? (
-              <div className="flex h-full flex-col items-center justify-center gap-2 text-gray-400">
+              <div className="flex h-full flex-col items-center justify-center gap-2 text-muted-foreground">
                 <ShoppingCart className="h-8 w-8" />
                 <p className="text-sm">Agrega productos para comenzar</p>
               </div>
             ) : (
-              <ul className="divide-y divide-gray-100">
+              <ul className="divide-y divide-border">
                 {lineas.map((l) => (
                   <li key={l.producto_id} className="flex items-center gap-2 py-2">
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-gray-800">{l.nombre}</p>
-                      <p className="text-xs text-gray-500">
+                      <p className="truncate text-sm font-medium text-foreground">{l.nombre}</p>
+                      <p className="text-xs text-muted-foreground">
                         {formatUsdCents(l.precio)} × {l.cantidad}
                       </p>
                     </div>
@@ -258,7 +274,7 @@ export default function VentaPage() {
                       <button
                         aria-label={`Menos ${l.nombre}`}
                         onClick={() => useCarrito.getState().setCantidad(l.producto_id, l.cantidad - 1)}
-                        className="rounded-md border border-gray-200 p-1 text-gray-500 hover:bg-gray-50"
+                        className="rounded-md border border-border p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
                       >
                         <Minus className="h-3.5 w-3.5" />
                       </button>
@@ -266,14 +282,14 @@ export default function VentaPage() {
                       <button
                         aria-label={`Más ${l.nombre}`}
                         onClick={() => useCarrito.getState().setCantidad(l.producto_id, l.cantidad + 1)}
-                        className="rounded-md border border-gray-200 p-1 text-gray-500 hover:bg-gray-50"
+                        className="rounded-md border border-border p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
                       >
                         <Plus className="h-3.5 w-3.5" />
                       </button>
                       <button
                         aria-label={`Quitar ${l.nombre}`}
                         onClick={() => useCarrito.getState().quitar(l.producto_id)}
-                        className="ml-1 rounded-md p-1 text-red-400 hover:bg-red-50"
+                        className="ml-1 rounded-md p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -285,13 +301,13 @@ export default function VentaPage() {
             )}
           </div>
 
-          <div className="border-t border-gray-100 px-3 py-3">
+          <div className="border-t border-border px-3 py-3">
             <div className="mb-2 flex items-center justify-between">
-              <span className="text-sm text-gray-500">Total</span>
-              <strong className="text-xl text-gray-900" data-testid="total-usd">{formatUsdCents(subtotal)}</strong>
+              <span className="text-sm text-muted-foreground">Total</span>
+              <strong className="text-xl text-foreground" data-testid="total-usd">{formatUsdCents(subtotal)}</strong>
             </div>
             {subtotal > 0 && (
-              <p className="mb-2 text-xs text-gray-500" data-testid="total-bs">
+              <p className="mb-2 text-xs text-muted-foreground" data-testid="total-bs">
                 ≈ {formatVesCents(Math.round(subtotal * tasa))}
               </p>
             )}
@@ -350,14 +366,14 @@ export default function VentaPage() {
       >
         <div className="space-y-3">
           {cantidadPara && (
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-muted-foreground">
               Precio unitario <strong>{formatUsdCents(efectivoDe(cantidadPara))}</strong>
               {stock[cantidadPara.id] != null && (
                 <span
                   className={`ml-2 text-xs ${
                     (stock[cantidadPara.id] ?? 0) <= STOCK_BAJO
-                      ? 'font-semibold text-red-600'
-                      : 'text-gray-400'
+                      ? 'font-semibold text-destructive'
+                      : 'text-muted-foreground'
                   }`}
                 >
                   Disponible: {stock[cantidadPara.id]}
@@ -377,7 +393,7 @@ export default function VentaPage() {
             }}
           />
           {cantidadPara && cantidadValida && (
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-muted-foreground">
               Total: <strong>{formatUsdCents(Math.round(efectivoDe(cantidadPara) * Number(cantidad)))}</strong>
             </p>
           )}

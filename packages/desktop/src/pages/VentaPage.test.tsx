@@ -111,26 +111,78 @@ describe('VentaPage', () => {
     useCarrito.getState().vaciar();
   });
 
-  it('filtra el catálogo por categoría', async () => {
+  it('filtra el catálogo por sección', async () => {
     const user = userEvent.setup();
     render(<VentaPage />);
     await screen.findByText('Cuaderno Carta');
     await screen.findByText('Tiza Blanca');
 
-    await user.selectOptions(screen.getByLabelText('Filtrar por categoría'), '1');
+    await user.click(screen.getByRole('button', { name: /^Cuadernos/ }));
     expect(screen.getByText('Cuaderno Carta')).toBeInTheDocument();
     expect(screen.queryByText('Tiza Blanca')).not.toBeInTheDocument();
     expect(screen.queryByText('Bolígrafo Azul')).not.toBeInTheDocument();
 
     // Volver a "todas" los deja aparecer otra vez: el filtro es del catálogo,
     // no borra nada.
-    await user.selectOptions(screen.getByLabelText('Filtrar por categoría'), '');
+    await user.click(screen.getByRole('button', { name: 'Todas' }));
     expect(await screen.findByText('Tiza Blanca')).toBeInTheDocument();
     expect(screen.getByText('Bolígrafo Azul')).toBeInTheDocument();
   });
 
+  it('agrupa el catálogo con cabeceras de sección', async () => {
+    render(<VentaPage />);
+    await screen.findByText('Cuaderno Carta');
+
+    // Con "Todas" activo el catálogo va por secciones y cada una lleva su
+    // título: es la única señal de dónde empieza cada una.
+    expect(screen.getByRole('region', { name: 'Cuadernos' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Pizarra' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Sin categoría' })).toBeInTheDocument();
+
+    // Los huérfanos salen en su pestaña propia, con el contador, y al final.
+    expect(screen.getByRole('button', { name: 'Sin categoría · 1' })).toBeInTheDocument();
+  });
+
+  it('quita las cabeceras en cuanto se elige una sección', async () => {
+    // La pestaña ya dice dónde estás; repetirlo sobre la rejilla es ruido.
+    const user = userEvent.setup();
+    render(<VentaPage />);
+    await screen.findByText('Cuaderno Carta');
+
+    await user.click(screen.getByRole('button', { name: /^Cuadernos/ }));
+    expect(screen.getByRole('button', { name: /^Cuadernos/ })).toHaveAttribute('aria-pressed', 'true');
+    // El `aria-label` del `<section>` se queda —para el lector de pantalla es
+    // información gratis—, pero el título visible desaparece.
+    expect(screen.queryByRole('heading', { name: 'Cuadernos' })).not.toBeInTheDocument();
+  });
+
+  it('desagrupa el catálogo al escribir en el buscador', async () => {
+    // Buscar entre tres mil artículos tiene que dar treinta resultados, no tres
+    // cabeceras de un artículo cada una.
+    const user = userEvent.setup();
+    render(<VentaPage />);
+    await screen.findByText('Cuaderno Carta');
+
+    await user.type(screen.getByLabelText('Buscar producto'), 'o');
+    await waitFor(() => expect(screen.queryByRole('region', { name: 'Cuadernos' })).not.toBeInTheDocument());
+
+    expect(screen.getByText('Cuaderno Carta')).toBeInTheDocument();
+    expect(screen.getByText('Bolígrafo Azul')).toBeInTheDocument();
+    expect(screen.queryByText('Tiza Blanca')).not.toBeInTheDocument();
+  });
+
+  it('busca dentro de la sección elegida', async () => {
+    const user = userEvent.setup();
+    render(<VentaPage />);
+    await screen.findByText('Cuaderno Carta');
+
+    await user.click(screen.getByRole('button', { name: /^Cuadernos/ }));
+    await user.type(screen.getByLabelText('Buscar producto'), 'zz');
+    expect(await screen.findByText('Sin productos que coincidan.')).toBeInTheDocument();
+  });
+
   it('sigue vendiendo aunque no se puedan cargar las categorías', async () => {
-    // El filtro por categoría es una comodidad, no un requisito: si la lista de
+    // El filtro por sección es una comodidad, no un requisito: si la lista de
     // categorías falla, el catálogo entero tiene que seguir en pantalla y la
     // venta tiene que poder hacerse.
     const { listarCategorias } = await import('../services/db');
@@ -140,7 +192,11 @@ describe('VentaPage', () => {
     render(<VentaPage />);
     await screen.findByText('Cuaderno Carta');
 
-    expect(screen.queryByLabelText('Filtrar por categoría')).not.toBeInTheDocument();
+    // Sin pestañas, y sin una de "Sin categoría" que metería todo el catálogo
+    // bajo un rótulo que no se puede comprobar.
+    expect(screen.queryByRole('group', { name: 'Filtrar por categoría' })).not.toBeInTheDocument();
+    expect(screen.getByText('Tiza Blanca')).toBeInTheDocument();
+
     await user.click(screen.getByRole('button', { name: /Cuaderno Carta/i }));
     await user.click(screen.getByRole('button', { name: 'Agregar' }));
     expect(await screen.findByText('$5.00 × 1')).toBeInTheDocument();
