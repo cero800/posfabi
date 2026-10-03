@@ -2,7 +2,118 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Impresión: solo se imprime el área de la factura. */
+/* ---------------------------------------------------------------------------
+   Tokens de color
+
+   Azul de primario, morado de acento, y neutros para el resto. El morado está
+   deliberadamente reservado para acentos y estados activos: si se usara como
+   primario competiría con el azul y la pantalla dejaría de tener jerarquía.
+
+   Los valores van en HSL sin la coma final porque así se pueden usar con
+   modificadores de opacidad de Tailwind (`bg-primary/80`): si el color fuera
+   `hsl(243 75% 59%)` a secas, la clase con `/80` no saldría.
+
+   ## Los valores no se eligieron a ojo
+
+   `src/test/contraste.test.ts` lee este archivo, saca los números y comprueba
+   los pares que de verdad se pintan —texto sobre su superficie— contra el 4.5:1
+   que pide WCAG AA. Por eso el morado de acento es `271 75% 48%` y no el morado
+   brillante que tenía antes: con el otro, el enlace de menú activo quedaba en
+   3.4:1 y no se podía leer. Si se toca un valor, el test lo dice.
+
+   ## El borde no llega a 3:1, y es a propósito
+
+   Un borde de formulario tiene que llegar a 3:1 según WCAG 1.4.11, y conseguirlo
+   exigiría un gris medio que arruinaría el aire minimal que se pidió. La
+   accesibilidad la carga el anillo de foco —`--ring`, que sí pasa de sobra—:
+   mientras el campo tenga el foco se ve dónde estás, que es cuando importa.
+   --------------------------------------------------------------------------- */
+
+:root {
+  --background: 0 0% 100%;
+  --foreground: 222 47% 11%;
+
+  --card: 210 40% 98%;
+  --card-foreground: 222 47% 11%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 47% 11%;
+
+  /* Azul de primario. Toda acción que se ejecuta usa este. */
+  --primary: 243 75% 59%;
+  --primary-foreground: 0 0% 100%;
+
+  /* Morado de acento. Cabeceras de sección, badges, estado activo del menú. */
+  --accent: 271 75% 48%;
+  --accent-foreground: 0 0% 100%;
+
+  --secondary: 210 40% 96%;
+  --secondary-foreground: 222 47% 11%;
+  --muted: 210 40% 96%;
+  --muted-foreground: 215 16% 44%;
+
+  --border: 214 32% 91%;
+  --input: 214 32% 91%;
+  --ring: 243 75% 59%;
+
+  --destructive: 0 72% 46%;
+  --destructive-foreground: 0 0% 100%;
+  --success: 142 72% 30%;
+  --success-foreground: 0 0% 100%;
+  --warning: 32 90% 33%;
+  --warning-foreground: 0 0% 100%;
+
+  /* Negro con un punto de azul, no gris puro: una sombra gris sobre fondo blanco
+     se ve sucia; tiñéndola con el color de la marca parece que sale de la luz
+     de la pantalla. */
+  --shadow: 222 47% 11%;
+}
+
+.dark {
+  --background: 222 47% 11%;
+  --foreground: 210 40% 98%;
+
+  --card: 222 47% 9%;
+  --card-foreground: 210 40% 98%;
+  --popover: 222 47% 9%;
+  --popover-foreground: 210 40% 98%;
+
+  /* Los primarios se aclaran en vez de quedar igual: un azul saturado sobre
+     fondo casi negro vibra y cansa a fin de jornada, que es cuando más se
+     usa el POS. */
+  --primary: 232 85% 75%;
+  --primary-foreground: 222 47% 11%;
+
+  --accent: 258 90% 82%;
+  --accent-foreground: 222 47% 11%;
+
+  --secondary: 217 33% 17%;
+  --secondary-foreground: 210 40% 98%;
+  --muted: 217 33% 17%;
+  --muted-foreground: 215 20% 65%;
+
+  --border: 215 28% 17%;
+  --input: 215 28% 17%;
+  --ring: 232 85% 75%;
+
+  --destructive: 0 91% 71%;
+  --destructive-foreground: 222 47% 11%;
+  --success: 142 71% 45%;
+  --success-foreground: 222 47% 11%;
+  --warning: 45 93% 58%;
+  --warning-foreground: 222 47% 11%;
+
+  --shadow: 0 0% 0%;
+}
+
+/* El color de la barra de scroll. Sin esto, en modo oscuro sale la de Windows
+   con el fondo claro, que es un rectángulo blanco en medio de la pantalla. */
+* {
+  scrollbar-color: hsl(var(--border)) transparent;
+}
+
+/* ---------------------------------------------------------------------------
+   Impresión: solo se imprime el área de la factura.
+   --------------------------------------------------------------------------- */
 @media print {
   @page {
     margin: 12mm;

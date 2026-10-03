@@ -3,7 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Panadería POS</title>
+    <!-- Debe ir antes de la hoja de estilos: decide la clase `.dark` antes del
+         primer pintado, para que en modo oscuro no haya un fogonazo blanco.
+         Explica el porqué en `public/theme.js`. -->
+    <script src="/theme.js"></script>
+    <title>Tienda POS</title>
   </head>
   <body>
     <div id="root"></div>

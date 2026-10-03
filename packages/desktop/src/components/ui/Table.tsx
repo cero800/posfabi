@@ -11,7 +11,7 @@ export function Table({ children, className }: { children: ReactNode; className?
 
 export function THead({ children }: { children: ReactNode }) {
   return (
-    <thead className="border-b border-gray-200 text-left text-xs uppercase tracking-wide text-gray-500">
+    <thead className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
       {children}
     </thead>
   );
@@ -27,7 +27,7 @@ export function Th({ children, className, ...rest }: ThHTMLAttributes<HTMLTableC
 
 export function Td({ children, className, ...rest }: TdHTMLAttributes<HTMLTableCellElement>) {
   return (
-    <td className={cn('px-4 py-2.5 align-middle text-gray-800', className)} {...rest}>
+    <td className={cn('px-4 py-2.5 align-middle text-foreground', className)} {...rest}>
       {children}
     </td>
   );

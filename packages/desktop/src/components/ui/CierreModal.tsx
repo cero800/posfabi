@@ -45,17 +45,17 @@ export function CierreModal({ cierre, onClose }: Props) {
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden="true" />
+      <div className="absolute inset-0 bg-black/40 dark:bg-black/70" onClick={onClose} aria-hidden="true" />
       <div
         role="dialog"
         aria-modal="true"
         aria-label="Cierre de caja"
-        className="relative flex max-h-[90vh] w-full max-w-2xl flex-col rounded-xl bg-white shadow-xl"
+        className="relative flex max-h-[90vh] w-full max-w-2xl flex-col rounded-card bg-popover text-popover-foreground shadow-pop"
       >
-        <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-3">
+        <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-3">
           <div>
-            <h2 className="text-sm font-semibold text-gray-900">Cierre de caja</h2>
-            <p className="text-xs text-gray-500">{cierre.fecha.slice(0, 10)}</p>
+            <h2 className="text-sm font-semibold">Cierre de caja</h2>
+            <p className="text-xs text-muted-foreground">{cierre.fecha.slice(0, 10)}</p>
           </div>
           <div className="flex gap-2">
             <Button onClick={imprimir} disabled={imprimiendo}>
@@ -68,7 +68,12 @@ export function CierreModal({ cierre, onClose }: Props) {
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto p-5">
-          {/* Área que se imprime (solo este bloque sale a la impresora). */}
+          {/* Área que se imprime (solo este bloque sale a la impresora).
+
+              A propósito NO usa tokens: sus `gray-900` y `bg-white` son fijos, en
+              claro y en oscuro. Una impresora térmica no tiene modo oscuro, así
+              que un cierre que en pantalla saliera invertido sería ilegible en
+              papel. */}
           <div className="factura-print mx-auto max-w-md bg-white text-sm text-gray-900">
             <header className="border-b-2 border-gray-900 pb-3 text-center">
               <h1 className="text-xl font-black uppercase tracking-wide">

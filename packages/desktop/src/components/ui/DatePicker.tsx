@@ -93,9 +93,9 @@ export function DatePicker({ value, onChange, 'aria-label': ariaLabel }: Props) 
         aria-haspopup="dialog"
         aria-expanded={abierto}
         onClick={() => setAbierto((v) => !v)}
-        className="flex w-44 items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm transition focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+        className="flex w-44 items-center gap-2 rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground shadow-card transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/40"
       >
-        <CalendarDays className="h-4 w-4 text-gray-400" />
+        <CalendarDays className="h-4 w-4 text-muted-foreground" />
         <span>{value}</span>
       </button>
 
@@ -103,25 +103,25 @@ export function DatePicker({ value, onChange, 'aria-label': ariaLabel }: Props) 
         <div
           role="dialog"
           aria-label="Calendario"
-          className="absolute right-0 z-30 mt-2 w-64 rounded-xl border border-gray-200 bg-white p-3 shadow-xl"
+          className="absolute right-0 z-30 mt-2 w-64 rounded-card border border-border bg-popover p-3 text-popover-foreground shadow-pop"
         >
           <div className="mb-2 flex items-center justify-between">
             <button
               type="button"
               aria-label="Mes anterior"
               onClick={() => cambiarMes(-1)}
-              className="rounded-md p-1 text-gray-500 hover:bg-gray-100"
+              className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
-            <span className="text-sm font-semibold text-gray-800">
+            <span className="text-sm font-semibold text-popover-foreground">
               {MESES[mes]} {anio}
             </span>
             <button
               type="button"
               aria-label="Mes siguiente"
               onClick={() => cambiarMes(1)}
-              className="rounded-md p-1 text-gray-500 hover:bg-gray-100"
+              className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
             >
               <ChevronRight className="h-4 w-4" />
             </button>
@@ -129,7 +129,7 @@ export function DatePicker({ value, onChange, 'aria-label': ariaLabel }: Props) 
 
           <div className="grid grid-cols-7 gap-1 text-center">
             {DIAS.map((dia) => (
-              <span key={dia} className="text-[10px] font-medium text-gray-400">
+              <span key={dia} className="text-[10px] font-medium text-muted-foreground">
                 {dia}
               </span>
             ))}
@@ -145,9 +145,9 @@ export function DatePicker({ value, onChange, 'aria-label': ariaLabel }: Props) 
                     setAbierto(false);
                   }}
                   className={cn(
-                    'rounded-md py-1 text-xs text-gray-700 hover:bg-emerald-50 hover:text-emerald-700',
-                    dia === d && mes === m && anio === y && 'bg-emerald-600 font-semibold text-white hover:bg-emerald-600 hover:text-white',
-                    aIso(anio, mes, dia) === hoyIso && dia !== d && 'font-semibold text-emerald-700',
+                    'rounded-md py-1 text-xs text-popover-foreground hover:bg-accent/10 hover:text-accent',
+                    dia === d && mes === m && anio === y && 'bg-primary font-semibold text-primary-foreground hover:bg-primary hover:text-primary-foreground',
+                    aIso(anio, mes, dia) === hoyIso && dia !== d && 'font-semibold text-primary',
                   )}
                 >
                   {dia}

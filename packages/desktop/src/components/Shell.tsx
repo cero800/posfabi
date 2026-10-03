@@ -18,6 +18,7 @@ import { trazar } from '../services/logging';
 import { cn } from '../lib/cn';
 import { formatVesCents } from '../lib/format';
 import { Button } from './ui/Button';
+import { TemaToggle } from './TemaToggle';
 
 const nav: Array<{ to: string; label: string; icon: ReactNode; soloAdmin?: boolean }> = [
   { to: '/venta', label: 'Venta', icon: <ShoppingCart className="h-4 w-4" /> },
@@ -67,11 +68,11 @@ export default function Shell() {
   const items = nav.filter((item) => !item.soloAdmin || esAdmin(operador?.rol));
 
   return (
-    <div className="flex h-screen bg-gray-100">
-      <aside className="flex w-56 shrink-0 flex-col border-r border-gray-200 bg-white">
-        <div className="border-b border-gray-100 px-4 py-4">
-          <p className="truncate text-sm font-bold text-gray-900">{negocio || NOMBRE_POR_DEFECTO}</p>
-          <p className="mt-0.5 text-xs text-gray-500">Punto de venta</p>
+    <div className="flex h-screen bg-muted">
+      <aside className="flex w-56 shrink-0 flex-col border-r border-border bg-card">
+        <div className="border-b border-border px-4 py-4">
+          <p className="truncate text-sm font-bold text-card-foreground">{negocio || NOMBRE_POR_DEFECTO}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">Punto de venta</p>
         </div>
 
         <nav className="flex-1 space-y-1 px-2 py-3">
@@ -82,9 +83,12 @@ export default function Shell() {
               className={({ isActive }) =>
                 cn(
                   'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                  // El morado se reserva para el estado activo: es el único acento
+                  // de la pantalla, y con nueve entradas del menú es la que
+                  // dice dónde estás sin gritar.
                   isActive
-                    ? 'bg-emerald-50 text-emerald-700'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900',
+                    ? 'bg-accent/10 text-accent'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                 )
               }
             >
@@ -94,11 +98,11 @@ export default function Shell() {
           ))}
         </nav>
 
-        <div className="border-t border-gray-100 p-3">
-          <div className="mb-2 flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2">
+        <div className="border-t border-border p-3">
+          <div className="mb-2 flex items-center gap-2 rounded-lg bg-muted px-3 py-2">
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-gray-800">{operador?.nombre}</p>
-              <p className="text-xs text-gray-500">{caja?.estado}</p>
+              <p className="truncate text-sm font-semibold text-foreground">{operador?.nombre}</p>
+              <p className="text-xs text-muted-foreground">{caja?.estado}</p>
             </div>
             <Button variant="ghost" size="sm" onClick={salir} aria-label="Cerrar sesión">
               <LogOut className="h-4 w-4" />
@@ -108,14 +112,15 @@ export default function Shell() {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-12 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4">
-          <div className="flex items-center gap-3 text-sm text-gray-500">
+        <header className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-card px-4">
+          <div className="flex items-center gap-3 text-sm text-muted-foreground">
             <span>{caja?.fecha?.slice(0, 10) ?? '—'}</span>
           </div>
-          <div className="flex items-center gap-4 text-sm">
-            <span className="text-gray-500">
+          <div className="flex items-center gap-2 text-sm">
+            <TemaToggle />
+            <span className="text-muted-foreground">
               Tasa del día:{' '}
-              <strong className="text-gray-900" data-testid="tasa-bar">
+              <strong className="text-foreground" data-testid="tasa-bar">
                 {formatVesCents(Math.round(useSesion.getState().tasa * 100))}
               </strong>
             </span>

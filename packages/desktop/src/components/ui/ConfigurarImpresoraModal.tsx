@@ -198,14 +198,14 @@ export function ConfigurarImpresoraModal({ open, onClose, onGuardado }: Props) {
         {mensaje && (
           <p
             role="alert"
-            className={`rounded-lg p-3 text-sm ${mensaje.tipo === 'ok' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}
+            className={`rounded-lg p-3 text-sm ${mensaje.tipo === 'ok' ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}`}
           >
             {mensaje.texto}
           </p>
         )}
 
         <div>
-          <p className="mb-1 text-xs font-medium text-gray-500">¿Cómo está conectada?</p>
+          <p className="mb-1 text-xs font-medium text-muted-foreground">¿Cómo está conectada?</p>
           <div className="grid grid-cols-3 gap-2">
             {TIPOS.map((t) => (
               <button
@@ -216,8 +216,8 @@ export function ConfigurarImpresoraModal({ open, onClose, onGuardado }: Props) {
                 className={cn(
                   'flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm',
                   tipo === t.tipo
-                    ? 'border-emerald-500 bg-emerald-50 font-medium text-emerald-800'
-                    : 'border-gray-200 text-gray-700 hover:bg-gray-50',
+                    ? 'border-primary bg-primary/10 font-medium text-primary'
+                    : 'border-border text-foreground hover:bg-muted',
                 )}
               >
                 {t.icono}
@@ -229,11 +229,11 @@ export function ConfigurarImpresoraModal({ open, onClose, onGuardado }: Props) {
 
         {tipo === 'usb' && (
           <div>
-            <p className="mb-1 text-xs font-medium text-gray-500">Impresoras detectadas</p>
+            <p className="mb-1 text-xs font-medium text-muted-foreground">Impresoras detectadas</p>
             {cargando ? (
-              <p className="text-sm text-gray-400">Buscando…</p>
+              <p className="text-sm text-muted-foreground">Buscando…</p>
             ) : candidatas.length === 0 ? (
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-muted-foreground">
                 No se detectaron impresoras. Conecta la térmica, o agrégala en Configuración de Windows, y vuelve a
                 intentar. También puedes escribir el nombre a mano.
               </p>
@@ -247,8 +247,8 @@ export function ConfigurarImpresoraModal({ open, onClose, onGuardado }: Props) {
                       className={cn(
                         'w-full rounded-lg border px-3 py-2 text-left text-sm',
                         form.impresora === quitarMarca(c)
-                          ? 'border-emerald-500 bg-emerald-50 text-emerald-800'
-                          : 'border-gray-200 text-gray-700 hover:bg-gray-50',
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : 'border-border text-foreground hover:bg-muted',
                       )}
                     >
                       {c}
@@ -321,7 +321,7 @@ export function ConfigurarImpresoraModal({ open, onClose, onGuardado }: Props) {
         )}
 
         {tipo === 'usb' && (
-          <p className="flex items-start gap-2 text-xs text-gray-500">
+          <p className="flex items-start gap-2 text-xs text-muted-foreground">
             <Printer className="mt-0.5 h-4 w-4 shrink-0" />
             <span>
               Se escriben bytes ESC/POS a la cola de Windows. Antes de dar esto por bueno, pulse «Probar impresión»:

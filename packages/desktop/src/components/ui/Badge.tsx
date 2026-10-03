@@ -3,12 +3,16 @@ import { cn } from '../../lib/cn';
 
 type Tone = 'green' | 'gray' | 'red' | 'amber' | 'blue';
 
+// Los nombres de `tone` no cambian —los callers los usan— pero lo que hay debajo
+// son tokens. Cada tono usa el color a plena intensidad para el texto y a un 10%
+// para el fondo: un relleno de color fuerte con texto del mismo color no
+// llega a 4.5:1, y el badge más pequeño del POS es de 12 px.
 const toneClass: Record<Tone, string> = {
-  green: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-  gray: 'bg-gray-100 text-gray-600 ring-gray-200',
-  red: 'bg-red-50 text-red-700 ring-red-200',
-  amber: 'bg-amber-50 text-amber-700 ring-amber-200',
-  blue: 'bg-blue-50 text-blue-700 ring-blue-200',
+  green: 'bg-success/10 text-success ring-success/20',
+  gray: 'bg-muted text-muted-foreground ring-border',
+  red: 'bg-destructive/10 text-destructive ring-destructive/20',
+  amber: 'bg-warning/10 text-warning ring-warning/20',
+  blue: 'bg-primary/10 text-primary ring-primary/20',
 };
 
 export function Badge({ tone = 'gray', children }: { tone?: Tone; children: ReactNode }) {

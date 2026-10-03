@@ -26,21 +26,24 @@ export function Modal({ open, title, onClose, children, footer }: ModalProps) {
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden="true" />
+      {/* En modo oscuro el velo es negro puro en vez de usar el token: un negro con
+          azul al 40% sobre una superficie ya oscura deja la ventana
+          indistinguible del fondo. */}
+      <div className="absolute inset-0 bg-black/40 dark:bg-black/70" onClick={onClose} aria-hidden="true" />
       <div
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="relative w-full max-w-lg rounded-xl bg-white p-5 shadow-xl focus:outline-none"
+        className="relative w-full max-w-lg rounded-card bg-popover p-5 text-popover-foreground shadow-pop focus:outline-none"
       >
         <div className="mb-4 flex items-start justify-between gap-3">
-          <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+          <h2 className="text-lg font-semibold text-popover-foreground">{title}</h2>
           <Button variant="ghost" size="sm" onClick={onClose} aria-label="Cerrar">
             <X className="h-4 w-4" />
           </Button>
         </div>
         <div className="max-h-[70vh] overflow-y-auto">{children}</div>
-        {footer && <div className="mt-5 flex justify-end gap-2 border-t border-gray-100 pt-4">{footer}</div>}
+        {footer && <div className="mt-5 flex justify-end gap-2 border-t border-border pt-4">{footer}</div>}
       </div>
     </div>,
     document.body,
