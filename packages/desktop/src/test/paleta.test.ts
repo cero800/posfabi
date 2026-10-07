@@ -145,6 +145,24 @@ function malformadas(contenido: string): string[] {
   return [...new Set([...contenido.matchAll(DOBLE_OPACIDAD)].map((m) => m[0]))].sort();
 }
 
+/**
+ * Un ancho de anillo sin color de anillo en el mismo fichero.
+ *
+ * `ring-2` solo fija el ancho; el color lo da otra clase. Si no la hay, el que
+ * pinta es el respaldo de Tailwind, `rgb(59 130 246)`: un azul fijo que no es un
+ * token y que no cambia con el tema. No se puede arreglar en la config — se
+ * intentó: `withAlphaValue` de Tailwind rechaza `hsl(var(--ring))` y devuelve su
+ * propio azul, así que `ringColor` en `tailwind.config.js` empeora el resultado en
+ * vez de mejorarlo.
+ *
+ * La placa que sí funciona es esta, y va **por fichero y no por cadena** porque en
+ * la práctica el ancho y el color casi nunca van juntos: `focus:ring-2` vive en la
+ * clase base del componente y `focus:ring-primary/40` en su rama concreta, o
+ * `ring-1` va en el elemento y el color en el mapa de variantes de al lado.
+ */
+const ANCHO_ANILLO = /\bring-(?:0|1|2|4|8)\b/;
+const COLOR_ANILLO = /\bring-(?!inset\b|offset\b|[01248]\b)[a-z]+(?:\/\d{1,3})?\b/;
+
 const ficheros = listarFicheros(RAIZ);
 const repartidos = ficheros.map((f) => ({
   fichero: relative(process.cwd(), f),
@@ -182,5 +200,20 @@ describe('dentro de lo imprimible: sí el papel y ningún token', () => {
     expect(tokens(contenido)).toEqual([]);
     expect(malformadas(contenido)).toEqual([]);
     expect(contenido).toContain('bg-white');
+  });
+});
+
+
+describe('ningún ancho de anillo va sin color de anillo', () => {
+  const conAncho = repartidos.map((f) => ({ fichero: f.fichero, limpio: sinComentarios(f.fuera) })).filter((f) => ANCHO_ANILLO.test(f.limpio));
+
+  it('hay anillos en el código que mirar', () => {
+    // Sin esta, el resto pasaría en vacío si un día desapareciera el ancho de
+    // todas las pantallas.
+    expect(conAncho.length).toBeGreaterThan(0);
+  });
+
+  it('y todos llevan su color', () => {
+    expect(conAncho.filter((f) => !COLOR_ANILLO.test(f.limpio)).map((f) => f.fichero)).toEqual([]);
   });
 });

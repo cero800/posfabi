@@ -23,6 +23,10 @@ export function Select({ label, hint, id, className, children, ...rest }: Select
         className={cn(
           'w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground shadow-card transition',
           'focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/40',
+          // El navegador solo atenúa un `<select>` si no le tocan los colores, y
+          // aquí sí: `bg-background` y `text-foreground` se los quitan, así que un
+          // deshabilitado salía con el mismo aspecto que uno activo.
+          'disabled:cursor-not-allowed disabled:opacity-50',
           className,
         )}
         {...rest}

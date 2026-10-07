@@ -94,7 +94,11 @@ export default function ClienteAutocomplete({ clientes, clienteId, onChange }: P
                     role="option"
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => seleccionar(c)}
-                    className="block w-full px-3 py-2 text-left text-sm hover:bg-muted focus:outline-none"
+                    // El foco aquí solo puede venir del teclado: el `onMouseDown`
+                    // de arriba cancela el evento para que el campo no pierda el
+                    // suyo. Sin indicador, quien navega con Tab cambia de opción
+                    // sin saber en cuál está.
+                    className="block w-full px-3 py-2 text-left text-sm hover:bg-muted focus-visible:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
                   >
                     <span className="font-medium text-foreground">{c.nombre}</span>
                     {esMostrador(c) && <span className="ml-1 text-xs text-muted-foreground">(mostrador)</span>}

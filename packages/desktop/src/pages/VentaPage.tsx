@@ -274,7 +274,7 @@ export default function VentaPage() {
                       <button
                         aria-label={`Menos ${l.nombre}`}
                         onClick={() => useCarrito.getState().setCantidad(l.producto_id, l.cantidad - 1)}
-                        className="rounded-md border border-border p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                        className="rounded-md border border-border p-1 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
                       >
                         <Minus className="h-3.5 w-3.5" />
                       </button>
@@ -282,14 +282,14 @@ export default function VentaPage() {
                       <button
                         aria-label={`Más ${l.nombre}`}
                         onClick={() => useCarrito.getState().setCantidad(l.producto_id, l.cantidad + 1)}
-                        className="rounded-md border border-border p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                        className="rounded-md border border-border p-1 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
                       >
                         <Plus className="h-3.5 w-3.5" />
                       </button>
                       <button
                         aria-label={`Quitar ${l.nombre}`}
                         onClick={() => useCarrito.getState().quitar(l.producto_id)}
-                        className="ml-1 rounded-md p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                        className="ml-1 rounded-md p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>

@@ -26,7 +26,7 @@ export function ProductoCard({
       type="button"
       onClick={onAgregar}
       disabled={deshabilitado}
-      className="group flex flex-col justify-between gap-2 rounded-card border border-border bg-card p-3 text-left text-foreground shadow-card transition hover:border-primary/40 hover:shadow-pop disabled:cursor-not-allowed disabled:opacity-50"
+      className="group flex flex-col justify-between gap-2 rounded-card border border-border bg-card p-3 text-left text-foreground shadow-card transition hover:border-primary/40 hover:shadow-pop focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
     >
       <div className="flex items-start justify-between gap-2">
         <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{codigo}</span>

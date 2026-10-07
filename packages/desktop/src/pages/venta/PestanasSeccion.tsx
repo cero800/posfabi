@@ -42,7 +42,7 @@ function Pestania({
       onClick={onClick}
       aria-pressed={activa}
       className={cn(
-        'shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 text-sm transition-colors',
+        'shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 text-sm transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary',
         // El morado marca dónde estás. Es el mismo acento que usa el menú lateral,
         // y a propósito es el único: dos colores de "activo" en la misma
         // pantalla harían que uno dejara de significar nada.

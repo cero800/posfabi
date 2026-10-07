@@ -144,7 +144,7 @@ export default function PrecioEspecialModal({
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') void guardar(p);
                         }}
-                        className="w-24 rounded-md border border-border px-2 py-1 text-right text-sm focus:border-primary focus:outline-none"
+                        className="w-24 rounded-md border border-border px-2 py-1 text-right text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/40"
                       />
                       <Button size="sm" disabled={activoId === p.id} onClick={() => guardar(p)}>
                         {activoId === p.id ? '…' : 'Guardar'}
