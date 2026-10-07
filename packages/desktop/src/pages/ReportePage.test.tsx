@@ -91,6 +91,9 @@ describe('ReportePage', () => {
     expect(screen.queryByText(/Producción/)).not.toBeInTheDocument();
   });
 
+  // El export va por RPC con archivo real en disco. Con los 29 ficheros corriendo
+  // a la vez ese trayecto pasa de un segundo y el `findByText` por defecto se
+  // queda corto: falla en la suite entera y pasa solo. Es carga, no regresión.
   it('exporta el .xlsx con el nombre del negocio del encabezado', async () => {
     const user = userEvent.setup();
     render(<ReportePage />);
@@ -98,7 +101,7 @@ describe('ReportePage', () => {
 
     await user.click(screen.getByRole('button', { name: /Excel/i }));
 
-    expect(await screen.findByText(/Reporte guardado en/)).toBeInTheDocument();
+    expect(await screen.findByText(/Reporte guardado en/, {}, { timeout: 5000 })).toBeInTheDocument();
     expect(guardarReporteExcel).toHaveBeenCalledTimes(1);
     const [nombre, b64] = vi.mocked(guardarReporteExcel).mock.calls[0] as [string, string];
     expect(nombre).toMatch(/^reporte-\d{4}-\d{2}-\d{2}\.xlsx$/);
@@ -131,7 +134,7 @@ describe('ReportePage', () => {
     await screen.findByText('Ventas brutas');
 
     await user.click(screen.getByRole('button', { name: /Excel/i }));
-    expect(await screen.findByText(/Reporte guardado en/)).toBeInTheDocument();
+    expect(await screen.findByText(/Reporte guardado en/, {}, { timeout: 5000 })).toBeInTheDocument();
     expect(guardarReporteExcel).toHaveBeenCalledTimes(1);
   });
 });

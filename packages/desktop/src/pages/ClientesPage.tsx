@@ -100,11 +100,11 @@ export default function ClientesPage() {
               {clientes
                 .filter((c) => c.documento !== '0')
                 .map((c) => (
-                  <tr key={c.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
-                    <Td className="font-mono text-xs text-gray-500">{c.documento}</Td>
+                  <tr key={c.id} className="border-b border-border last:border-0 hover:bg-muted/50">
+                    <Td className="font-mono text-xs text-muted-foreground">{c.documento}</Td>
                     <Td>
-                      <span className="font-medium text-gray-900">{c.nombre}</span>
-                      <span className="block text-xs text-gray-400">
+                      <span className="font-medium text-foreground">{c.nombre}</span>
+                      <span className="block text-xs text-muted-foreground">
                         {c.dias_credito > 0 ? `Plazo: ${c.dias_credito} días` : 'Al contado'}
                       </span>
                     </Td>
@@ -115,7 +115,7 @@ export default function ClientesPage() {
                     <Td className="text-right">
                       <div className="flex justify-end gap-1">
                         <Button variant="ghost" size="sm" aria-label={`Eliminar ${c.nombre}`} onClick={() => eliminar(c)}>
-                          <Trash2 className="h-4 w-4 text-red-500" />
+                          <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                       </div>
                     </Td>
@@ -132,7 +132,7 @@ export default function ClientesPage() {
         <Button onClick={crear} disabled={guardando}>{guardando ? 'Guardando…' : 'Guardar'}</Button>
       </>}>
         <div className="space-y-3">
-          {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+          {error && <p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
           <Input label="Nombre *" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} />
           <div className="flex gap-3">
             <div className="flex-1">

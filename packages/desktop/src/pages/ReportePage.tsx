@@ -156,7 +156,7 @@ export default function ReportePage() {
       />
 
       {exportOk && (
-        <div className="mb-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">{exportOk}</div>
+        <div className="mb-4 rounded-lg bg-success/10 p-3 text-sm text-success">{exportOk}</div>
       )}
 
       {!dato ? (
@@ -191,7 +191,7 @@ export default function ReportePage() {
                 </THead>
                 <tbody>
                   {dato.entradas.map((m, i) => (
-                    <tr key={i} className="border-b border-gray-50 last:border-0">
+                    <tr key={i} className="border-b border-border last:border-0">
                       <Td>{m.producto}</Td>
                       <Td className="text-right">{m.cantidad}</Td>
                       <Td className="text-right">{formatUsdCents(m.costo_unitario)}</Td>
@@ -221,14 +221,14 @@ export default function ReportePage() {
                 </THead>
                 <tbody>
                   {ventasEntregadas.map((v) => (
-                    <tr key={v.numero_factura} className="border-b border-gray-50 last:border-0">
+                    <tr key={v.numero_factura} className="border-b border-border last:border-0">
                       <Td className="font-mono text-xs">#{v.numero_factura}</Td>
                       <Td>{v.cliente}</Td>
                       <Td>
                         <Badge tone={v.tipo === 'contado' ? 'green' : 'blue'}>{v.tipo}</Badge>
                       </Td>
                       <Td className="text-right">{formatUsdCents(v.monto)}</Td>
-                      <Td className={`text-right ${v.devuelto > 0 ? 'text-red-600' : 'text-gray-400'}`}>
+                      <Td className={`text-right ${v.devuelto > 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
                         {v.devuelto > 0 ? `-${formatUsdCents(v.devuelto)}` : '—'}
                       </Td>
                       <Td className="text-right">{formatUsdCents(Math.max(v.monto - v.devuelto, 0))}</Td>
@@ -269,11 +269,11 @@ export default function ReportePage() {
                 </THead>
                 <tbody>
                   {dato.devoluciones.map((d) => (
-                    <tr key={d.id} className="border-b border-gray-50 last:border-0">
+                    <tr key={d.id} className="border-b border-border last:border-0">
                       <Td className="font-mono text-xs">#{d.numero_factura}</Td>
                       <Td>{d.cliente}</Td>
-                      <Td className="text-gray-600">{d.motivo ?? '—'}</Td>
-                      <Td className="text-gray-600">
+                      <Td className="text-muted-foreground">{d.motivo ?? '—'}</Td>
+                      <Td className="text-muted-foreground">
                         {d.detalle.length === 0 ? (
                           '—'
                         ) : (
@@ -287,8 +287,8 @@ export default function ReportePage() {
                           </ul>
                         )}
                       </Td>
-                      <Td className="text-gray-600">{d.operador_nombre || '—'}</Td>
-                      <Td className="text-right font-semibold text-red-600">-{formatUsdCents(d.monto)}</Td>
+                      <Td className="text-muted-foreground">{d.operador_nombre || '—'}</Td>
+                      <Td className="text-right font-semibold text-destructive">-{formatUsdCents(d.monto)}</Td>
                     </tr>
                   ))}
                 </tbody>
@@ -304,9 +304,9 @@ export default function ReportePage() {
 
 function Stat({ label, valor }: { label: string; valor: string }) {
   return (
-    <div className="rounded-lg bg-gray-50 p-3">
-      <p className="text-xs text-gray-500">{label}</p>
-      <p className="mt-1 text-lg font-bold text-gray-900">{valor}</p>
+    <div className="rounded-lg bg-muted p-3">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="mt-1 text-lg font-bold text-foreground">{valor}</p>
     </div>
   );
 }

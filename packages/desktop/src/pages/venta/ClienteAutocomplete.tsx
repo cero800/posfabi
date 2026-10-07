@@ -51,7 +51,7 @@ export default function ClienteAutocomplete({ clientes, clienteId, onChange }: P
 
   return (
     <div>
-      <label htmlFor="cliente-venta" className="mb-1 block text-xs font-medium text-gray-500">
+      <label htmlFor="cliente-venta" className="mb-1 block text-xs font-medium text-muted-foreground">
         <span className="inline-flex items-center gap-1">
           <Users className="h-3 w-3" /> Cliente
         </span>
@@ -80,12 +80,12 @@ export default function ClienteAutocomplete({ clientes, clienteId, onChange }: P
             if (e.key === 'Escape') setAbierto(false);
           }}
           placeholder="Buscar por nombre o RIF/DNI…"
-          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-800 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium text-foreground focus:border-primary focus:ring-2 focus:ring-primary/40 focus:outline-none"
         />
         {abierto && (
-          <ul className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg">
+          <ul className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-border bg-background shadow-lg">
             {filtrados.length === 0 ? (
-              <li className="px-3 py-2 text-sm text-gray-500">Sin resultados</li>
+              <li className="px-3 py-2 text-sm text-muted-foreground">Sin resultados</li>
             ) : (
               filtrados.map((c) => (
                 <li key={c.id}>
@@ -94,11 +94,11 @@ export default function ClienteAutocomplete({ clientes, clienteId, onChange }: P
                     role="option"
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => seleccionar(c)}
-                    className="block w-full px-3 py-2 text-left text-sm hover:bg-emerald-50 focus:outline-none"
+                    className="block w-full px-3 py-2 text-left text-sm hover:bg-muted focus:outline-none"
                   >
-                    <span className="font-medium text-gray-800">{c.nombre}</span>
-                    {esMostrador(c) && <span className="ml-1 text-xs text-gray-400">(mostrador)</span>}
-                    <span className="ml-2 font-mono text-xs text-gray-400">{c.documento}</span>
+                    <span className="font-medium text-foreground">{c.nombre}</span>
+                    {esMostrador(c) && <span className="ml-1 text-xs text-muted-foreground">(mostrador)</span>}
+                    <span className="ml-2 font-mono text-xs text-muted-foreground">{c.documento}</span>
                   </button>
                 </li>
               ))

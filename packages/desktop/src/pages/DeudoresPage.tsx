@@ -292,12 +292,12 @@ export default function DeudoresPage() {
                   <tr
                     key={d.cliente_id}
                     onClick={() => ver(d)}
-                    className={`cursor-pointer border-b border-gray-50 last:border-0 hover:bg-emerald-50/40 ${
-                      seleccion?.cliente_id === d.cliente_id ? 'bg-emerald-50/60' : ''
+                    className={`cursor-pointer border-b border-border last:border-0 hover:bg-success/5 ${
+                      seleccion?.cliente_id === d.cliente_id ? 'bg-success/10' : ''
                     }`}
                   >
                     <Td>
-                      <span className="font-medium text-gray-900">{d.nombre}</span>
+                      <span className="font-medium text-foreground">{d.nombre}</span>
                       {d.saldo_pendiente > 0 && d.total_vencido > 0 && (
                         <Badge tone="red">Vencido</Badge>
                       )}
@@ -305,15 +305,15 @@ export default function DeudoresPage() {
                         <Badge tone="green">Al día</Badge>
                       )}
                       {d.dias_credito > 0 && (
-                        <span className="block text-xs text-gray-400">Plazo: {d.dias_credito} días</span>
+                        <span className="block text-xs text-muted-foreground">Plazo: {d.dias_credito} días</span>
                       )}
                     </Td>
                     <Td className="text-right">{formatUsdCents(d.total_facturado)}</Td>
                     <Td className="text-right">{formatUsdCents(d.total_pagado)}</Td>
-                    <Td className={`text-right font-bold ${d.total_vencido > 0 ? 'text-red-600' : 'text-gray-500'}`}>
+                    <Td className={`text-right font-bold ${d.total_vencido > 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
                       {d.total_vencido > 0 ? formatUsdCents(d.total_vencido) : '—'}
                     </Td>
-                    <Td className={`text-right font-bold ${d.saldo_pendiente > 0 ? 'text-red-600' : 'text-gray-900'}`}>
+                    <Td className={`text-right font-bold ${d.saldo_pendiente > 0 ? 'text-destructive' : 'text-foreground'}`}>
                       {formatUsdCents(d.saldo_pendiente)}
                     </Td>
                   </tr>
@@ -356,7 +356,7 @@ export default function DeudoresPage() {
               </THead>
               <tbody>
                 {historial.map((p) => (
-                  <tr key={p.id} className="border-b border-gray-50 last:border-0">
+                  <tr key={p.id} className="border-b border-border last:border-0">
                     <Td className="font-mono text-xs">{p.numero_factura ? `#${p.numero_factura}` : 'Abono'}</Td>
                     <Td>
                       <Badge tone={p.tipo_pago === 'efectivo' ? 'green' : 'blue'}>{TIPO_PAGO_LABELS[p.tipo_pago]}</Badge>{' '}
@@ -364,7 +364,7 @@ export default function DeudoresPage() {
                       {p.numero_referencia ? ` · Ref. ${p.numero_referencia}` : ''}
                     </Td>
                     <Td className="text-right">{formatCents(p.monto, p.moneda)}</Td>
-                    <Td className="text-xs text-gray-500">{p.fecha_pago?.slice(0, 10) ?? '—'}</Td>
+                    <Td className="text-xs text-muted-foreground">{p.fecha_pago?.slice(0, 10) ?? '—'}</Td>
                   </tr>
                 ))}
               </tbody>
@@ -395,14 +395,14 @@ export default function DeudoresPage() {
               </THead>
               <tbody>
                 {ventas.map((v) => (
-                  <tr key={v.venta_id} className="border-b border-gray-50 last:border-0">
+                  <tr key={v.venta_id} className="border-b border-border last:border-0">
                     <Td className="font-mono text-xs">#{v.numero_factura}</Td>
                     <Td>
                       <Badge tone={v.tipo === 'credito' ? 'amber' : 'blue'}>{v.tipo === 'credito' ? 'Crédito' : 'Contado'}</Badge>
                     </Td>
-                    <Td className="text-xs text-gray-500">{v.fecha?.slice(0, 10) ?? '—'}</Td>
+                    <Td className="text-xs text-muted-foreground">{v.fecha?.slice(0, 10) ?? '—'}</Td>
                     <Td className="text-right">{formatUsdCents(v.total)}</Td>
-                    <Td className={`text-right ${v.devuelto > 0 ? 'text-red-600' : 'text-gray-400'}`}>
+                    <Td className={`text-right ${v.devuelto > 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
                       {v.devuelto > 0 ? `-${formatUsdCents(v.devuelto)}` : '—'}
                     </Td>
                     <Td className="text-right">
@@ -422,9 +422,9 @@ export default function DeudoresPage() {
             </Table>
           )}
           {seleccion && (devoluciones.length > 0 || filtroDia !== '') && (
-            <div className="mt-4 border-t border-gray-100 px-4 pb-4 pt-3">
+            <div className="mt-4 border-t border-border px-4 pb-4 pt-3">
               <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Devoluciones registradas{filtroDia === '' ? ` · ${devoluciones.length}` : ` · ${devolucionesVisibles.length}`}
                 </p>
                 <div className="flex items-center gap-2">
@@ -441,20 +441,20 @@ export default function DeudoresPage() {
                 </div>
               </div>
               {devolucionesVisibles.length === 0 ? (
-                <p className="text-sm text-gray-500">Sin devoluciones registradas el {filtroDia}</p>
+                <p className="text-sm text-muted-foreground">Sin devoluciones registradas el {filtroDia}</p>
               ) : (
                 <ul className="space-y-2">
                   {devolucionesVisibles.map((d) => (
                     <li key={d.id}>
                       <div className="flex items-center justify-between gap-4 text-sm">
-                        <span className="text-gray-600">
+                        <span className="text-muted-foreground">
                           {d.fecha_devolucion?.slice(0, 10) ?? '—'} · Factura #{d.numero_factura}
                           {d.motivo ? ` · ${d.motivo}` : ''}
                         </span>
-                        <span className="shrink-0 font-semibold text-red-600">-{formatUsdCents(d.monto)}</span>
+                        <span className="shrink-0 font-semibold text-destructive">-{formatUsdCents(d.monto)}</span>
                       </div>
                       {d.detalle.length > 0 && (
-                        <ul className="mt-1 space-y-1 border-l-2 border-red-100 pl-5 text-xs text-gray-500">
+                        <ul className="mt-1 space-y-1 border-l-2 border-destructive/30 pl-5 text-xs text-muted-foreground">
                           {d.detalle.map((p) => (
                             <li key={p.producto_id} className="flex items-center justify-between gap-4">
                               <span>{p.nombre} × {p.cantidad}</span>
@@ -477,32 +477,32 @@ export default function DeudoresPage() {
         <Button onClick={guardarAbono} disabled={!puedeGuardarAbono}>{guardando ? 'Guardando…' : 'Guardar abono'}</Button>
       </>}>
         <div className="space-y-3">
-          {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+          {error && <p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
 
-          <div className="grid grid-cols-3 gap-3 rounded-lg bg-gray-50 p-3 text-sm">
+          <div className="grid grid-cols-3 gap-3 rounded-lg bg-muted p-3 text-sm">
             <div>
-              <p className="text-xs text-gray-500">Facturado</p>
-              <p className="font-bold text-gray-900">{formatUsdCents(seleccion?.total_facturado ?? 0)}</p>
+              <p className="text-xs text-muted-foreground">Facturado</p>
+              <p className="font-bold text-foreground">{formatUsdCents(seleccion?.total_facturado ?? 0)}</p>
             </div>
             <div>
-              <p className="text-xs text-gray-500">Debe (saldo)</p>
-              <p className="font-bold text-red-600">{formatUsdCents(saldoUsd)}</p>
-              {aBs(saldoUsd) !== null && <p className="font-semibold text-emerald-700">{formatVesCents(aBs(saldoUsd)!)}</p>}
+              <p className="text-xs text-muted-foreground">Debe (saldo)</p>
+              <p className="font-bold text-destructive">{formatUsdCents(saldoUsd)}</p>
+              {aBs(saldoUsd) !== null && <p className="font-semibold text-success">{formatVesCents(aBs(saldoUsd)!)}</p>}
             </div>
             <div className="text-right">
-              <p className="text-xs text-gray-500">Queda tras este abono</p>
-              <p className={`font-bold ${superaSaldo ? 'text-red-600' : 'text-emerald-700'}`}>
+              <p className="text-xs text-muted-foreground">Queda tras este abono</p>
+              <p className={`font-bold ${superaSaldo ? 'text-destructive' : 'text-success'}`}>
                 {superaSaldo ? 'Excede el saldo' : formatUsdCents(quedaUsd)}
               </p>
               {!superaSaldo && aBs(quedaUsd) !== null && (
-                <p className="font-semibold text-gray-600">{formatVesCents(aBs(quedaUsd)!)}</p>
+                <p className="font-semibold text-muted-foreground">{formatVesCents(aBs(quedaUsd)!)}</p>
               )}
             </div>
           </div>
 
           <div className="space-y-2">
             {pagos.map((p, i) => (
-              <div key={p.id} className="flex gap-2 rounded-lg border border-gray-200 p-2">
+              <div key={p.id} className="flex gap-2 rounded-lg border border-border p-2">
                 <div className="w-24">
                   <Select
                     aria-label={`Moneda abono ${i + 1}`}
@@ -569,9 +569,9 @@ export default function DeudoresPage() {
           </div>
 
           {superaSaldo && (
-            <p className="text-xs text-red-600">El abono supera el saldo pendiente ({formatUsdCents(saldoUsd)})</p>
+            <p className="text-xs text-destructive">El abono supera el saldo pendiente ({formatUsdCents(saldoUsd)})</p>
           )}
-          {referenciaFaltante && <p className="text-xs text-red-600">El pago móvil requiere el número de referencia</p>}
+          {referenciaFaltante && <p className="text-xs text-destructive">El pago móvil requiere el número de referencia</p>}
         </div>
       </Modal>
 
@@ -587,11 +587,11 @@ export default function DeudoresPage() {
         </>}
       >
         <div className="space-y-3">
-          {devError && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{devError}</p>}
+          {devError && <p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{devError}</p>}
 
-          <div className="flex items-center justify-between rounded-lg bg-gray-50 p-3 text-sm">
-            <span className="text-gray-600">Devoluble de la factura</span>
-            <span className="font-bold text-gray-900">{formatUsdCents(devolvible)}</span>
+          <div className="flex items-center justify-between rounded-lg bg-muted p-3 text-sm">
+            <span className="text-muted-foreground">Devoluble de la factura</span>
+            <span className="font-bold text-foreground">{formatUsdCents(devolvible)}</span>
           </div>
 
           <div className="space-y-2">
@@ -600,10 +600,10 @@ export default function DeudoresPage() {
               const invalida = l.devuelve.trim() !== '' && (!Number.isFinite(n) || n < 0 || n > l.detalle.cantidad);
               const subtotal = Number.isFinite(n) && n > 0 ? Math.round(n * l.detalle.precio_unitario) : 0;
               return (
-                <div key={l.detalle.producto_id} className="flex items-center gap-2 rounded-lg border border-gray-200 p-2">
+                <div key={l.detalle.producto_id} className="flex items-center gap-2 rounded-lg border border-border p-2">
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900">{l.detalle.nombre}</p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-sm font-medium text-foreground">{l.detalle.nombre}</p>
+                    <p className="text-xs text-muted-foreground">
                       Vendidos: {l.detalle.cantidad} · {formatUsdCents(l.detalle.subtotal)}
                     </p>
                   </div>
@@ -618,14 +618,14 @@ export default function DeudoresPage() {
                       error={invalida ? 'Cantidad inválida' : undefined}
                     />
                   </div>
-                  <span className="w-24 text-right text-sm font-semibold text-gray-700">{formatUsdCents(subtotal)}</span>
+                  <span className="w-24 text-right text-sm font-semibold text-foreground">{formatUsdCents(subtotal)}</span>
                 </div>
               );
             })}
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-500">Motivo (opcional)</label>
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">Motivo (opcional)</label>
             <Input
               aria-label="Motivo de la devolución"
               value={devMotivo}
@@ -634,7 +634,7 @@ export default function DeudoresPage() {
             />
           </div>
 
-          <label className="flex items-start gap-2 rounded-lg border border-gray-200 p-3 text-sm">
+          <label className="flex items-start gap-2 rounded-lg border border-border p-3 text-sm">
             <input
               type="checkbox"
               aria-label="Reingresar los productos devueltos al inventario"
@@ -643,29 +643,29 @@ export default function DeudoresPage() {
               onChange={(e) => setDevAfectaStock(e.target.checked)}
             />
             <span>
-              <span className="block font-medium text-gray-700">Reingresar al inventario</span>
-              <span className="block text-xs text-gray-500">
+              <span className="block font-medium text-foreground">Reingresar al inventario</span>
+              <span className="block text-xs text-muted-foreground">
                 Suma las cantidades devueltas al stock disponible. Desactívalo si la
                 mercadería no vuelve a venderse (dañada, perdida o devuelta a otro consumidor).
               </span>
             </span>
           </label>
 
-          <div className="flex justify-between rounded-lg bg-red-50 p-3 text-sm">
-            <span className="text-gray-600">Total a devolver</span>
-            <strong className="text-red-700">{formatUsdCents(totalDevUsd)}</strong>
+          <div className="flex justify-between rounded-lg bg-destructive/10 p-3 text-sm">
+            <span className="text-muted-foreground">Total a devolver</span>
+            <strong className="text-destructive">{formatUsdCents(totalDevUsd)}</strong>
           </div>
 
           {cantidadesDevInvalidas && (
-            <p className="text-xs text-red-600">La cantidad devuelta no puede superar la vendida por producto</p>
+            <p className="text-xs text-destructive">La cantidad devuelta no puede superar la vendida por producto</p>
           )}
           {excedeDevolucion && (
-            <p className="text-xs text-red-600">
+            <p className="text-xs text-destructive">
               La devolución supera el monto devoluble de la factura ({formatUsdCents(devolvible)})
             </p>
           )}
           {totalDevUsd === 0 && devLineas.length > 0 && (
-            <p className="text-xs text-gray-500">Indica una cantidad mayor a 0 para registrar la devolución</p>
+            <p className="text-xs text-muted-foreground">Indica una cantidad mayor a 0 para registrar la devolución</p>
           )}
         </div>
       </Modal>

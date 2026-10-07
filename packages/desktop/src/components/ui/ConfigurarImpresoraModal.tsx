@@ -266,7 +266,7 @@ export function ConfigurarImpresoraModal({ open, onClose, onGuardado }: Props) {
               />
             </div>
             {candidatas.some((c) => c.includes('*')) && (
-              <p className="mt-2 flex items-start gap-2 rounded-lg bg-amber-50 p-3 text-xs text-amber-800">
+              <p className="mt-2 flex items-start gap-2 rounded-lg bg-warning/10 p-3 text-xs text-warning">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                 <span>
                   Las marcadas con «*» están instaladas con el controlador de la marca o con uno de PDF. Con esos
@@ -310,7 +310,7 @@ export function ConfigurarImpresoraModal({ open, onClose, onGuardado }: Props) {
               placeholder="C:\Users\POS\ticket.txt"
               hint="Cada ticket se escribe en esa ruta. Sirve para probar sin impresora y para revisar lo que salió."
             />
-            <p className="mt-2 flex items-start gap-2 rounded-lg bg-blue-50 p-3 text-xs text-blue-800">
+            <p className="mt-2 flex items-start gap-2 rounded-lg bg-accent/10 p-3 text-xs text-accent">
               <FileText className="mt-0.5 h-4 w-4 shrink-0" />
               <span>
                 Con esta opción no sale papel. El ticket se guarda como texto con los comandos de la impresora

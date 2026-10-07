@@ -70,16 +70,16 @@ export default function CerrarCajaPage() {
           <CardHeader title="Cerrar caja" subtitle={operador?.nombre} />
           <div className="space-y-4 p-5">
             <div>
-              <h3 className="mb-2 text-sm font-semibold text-gray-700">Cuenta del día</h3>
+              <h3 className="mb-2 text-sm font-semibold text-foreground">Cuenta del día</h3>
               {!resumen ? (
-                <p className="text-sm text-gray-500">Cargando ventas del día…</p>
+                <p className="text-sm text-muted-foreground">Cargando ventas del día…</p>
               ) : resumen.ventas.length === 0 && resumen.devoluciones.length === 0 ? (
-                <p className="text-sm text-gray-500">No hay ventas registradas hoy.</p>
+                <p className="text-sm text-muted-foreground">No hay ventas registradas hoy.</p>
               ) : (
                 <>
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="text-xs uppercase text-gray-500">
+                      <tr className="text-xs uppercase text-muted-foreground">
                         <th className="py-1 text-left">Factura</th>
                         <th className="py-1 text-left">Cliente</th>
                         <th className="py-1 text-center">Tipo</th>
@@ -91,13 +91,13 @@ export default function CerrarCajaPage() {
                     </thead>
                     <tbody>
                       {resumen.ventas.map((v) => (
-                        <tr key={v.venta_id} className="border-b border-gray-100">
+                        <tr key={v.venta_id} className="border-b border-border">
                           <td className="py-1 font-mono text-xs">#{String(v.numero_factura).padStart(4, '0')}</td>
                           <td className="py-1">{v.cliente}</td>
                           <td className="py-1 text-center text-xs">{v.tipo === 'contado' ? 'Contado' : 'Crédito'}</td>
                           <td className="py-1 text-right">{formatUsdCents(v.monto)}</td>
                           <td className="py-1 text-right">{formatVesCents(toVes(v.monto, 'usd', v.tasa_cambio))}</td>
-                          <td className={`py-1 text-right ${v.devuelto > 0 ? 'text-red-600' : 'text-gray-400'}`}>
+                          <td className={`py-1 text-right ${v.devuelto > 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
                             {v.devuelto > 0 ? `-${formatUsdCents(v.devuelto)}` : '—'}
                           </td>
                           <td className="py-1 text-right">{formatUsdCents(Math.max(v.monto - v.devuelto, 0))}</td>
@@ -113,7 +113,7 @@ export default function CerrarCajaPage() {
                         <td className="pt-2 text-right">
                           {formatVesCents(resumen.ventas.reduce((s, v) => s + toVes(v.monto, 'usd', v.tasa_cambio), 0))}
                         </td>
-                        <td className="pt-2 text-right text-red-600">
+                        <td className="pt-2 text-right text-destructive">
                           -{formatUsdCents(resumen.devoluciones.reduce((s, d) => s + d.monto, 0))}
                         </td>
                         <td className="pt-2 text-right">
@@ -130,22 +130,22 @@ export default function CerrarCajaPage() {
                   </table>
 
                   {resumen.devoluciones.length > 0 && (
-                    <div className="mt-3 border-t border-gray-100 pt-2">
-                      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                    <div className="mt-3 border-t border-border pt-2">
+                      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                         Devoluciones del día (perdido)
                       </p>
                       <ul className="space-y-1">
                         {resumen.devoluciones.map((d) => (
                           <li key={d.id}>
                             <div className="flex justify-between text-sm">
-                              <span className="text-gray-600">
+                              <span className="text-muted-foreground">
                                 Factura #{String(d.numero_factura).padStart(4, '0')} · {d.cliente}
                                 {d.motivo ? ` · ${d.motivo}` : ''}
                               </span>
-                              <span className="font-semibold text-red-600">-{formatUsdCents(d.monto)}</span>
+                              <span className="font-semibold text-destructive">-{formatUsdCents(d.monto)}</span>
                             </div>
                             {d.detalle.length > 0 && (
-                              <ul className="mt-0.5 space-y-0.5 border-l border-red-100 pl-3 text-xs text-gray-500">
+                              <ul className="mt-0.5 space-y-0.5 border-l border-destructive/30 pl-3 text-xs text-muted-foreground">
                                 {d.detalle.map((p) => (
                                   <li key={p.producto_id} className="flex justify-between gap-4">
                                     <span>{p.nombre} × {p.cantidad}</span>
@@ -157,7 +157,7 @@ export default function CerrarCajaPage() {
                           </li>
                         ))}
                       </ul>
-                      <p className="mt-2 text-xs text-gray-500">
+                      <p className="mt-2 text-xs text-muted-foreground">
                         Las devoluciones no alteran el arqueo de efectivo (no hay reembolso).
                       </p>
                     </div>
@@ -166,7 +166,7 @@ export default function CerrarCajaPage() {
               )}
             </div>
 
-            <div className="border-t border-gray-100 pt-4">
+            <div className="border-t border-border pt-4">
               <Input
                 label="Tasa de cierre"
                 prefix={<span className="font-semibold">Bs</span>}
@@ -177,13 +177,13 @@ export default function CerrarCajaPage() {
                 onChange={(e) => setTasaCierre(e.target.value)}
                 error={!tasaValida ? 'Tasa inválida' : undefined}
               />
-              <p className="mt-2 text-xs text-gray-500">
+              <p className="mt-2 text-xs text-muted-foreground">
                 El efectivo real se cuenta en persona; aquí se cierra con la cuenta del día.
               </p>
             </div>
 
             {error && (
-              <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+              <p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
                 {error}
               </p>
             )}
@@ -194,7 +194,7 @@ export default function CerrarCajaPage() {
               </Button>
             ) : (
               <div className="space-y-2">
-                <p className="text-center text-sm text-gray-600">
+                <p className="text-center text-sm text-muted-foreground">
                   ¿Confirmas el cierre? Se bloquea el punto de venta hasta abrir una nueva
                   caja. Tasa de cierre: <strong>{tasaCierre} Bs</strong>.
                 </p>

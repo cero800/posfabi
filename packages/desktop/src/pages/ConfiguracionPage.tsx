@@ -175,7 +175,7 @@ export default function ConfiguracionPage() {
 
       <Card className="max-w-xl p-4">
         {guardado && (
-          <p role="status" className="mb-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">
+          <p role="status" className="mb-4 rounded-lg bg-success/10 p-3 text-sm text-success">
             Datos guardados correctamente
           </p>
         )}
@@ -201,23 +201,23 @@ export default function ConfiguracionPage() {
           />
         </div>
 
-        <div className="mt-6 rounded-lg bg-gray-50 p-3 text-xs text-gray-500">
+        <div className="mt-6 rounded-lg bg-muted p-3 text-xs text-muted-foreground">
           Estos datos aparecen en el encabezado de cada factura al imprimirla.
         </div>
       </Card>
 
       <Card className="mt-4 max-w-xl p-4">
         <div className="mb-3 flex items-center gap-2">
-          <KeyRound className="h-4 w-4 text-gray-500" />
-          <h2 className="text-sm font-semibold text-gray-900">Cambiar mi PIN</h2>
+          <KeyRound className="h-4 w-4 text-muted-foreground" />
+          <h2 className="text-sm font-semibold text-foreground">Cambiar mi PIN</h2>
         </div>
         {pinOk && (
-          <p role="status" className="mb-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">
+          <p role="status" className="mb-4 rounded-lg bg-success/10 p-3 text-sm text-success">
             PIN actualizado correctamente
           </p>
         )}
         {pinError && (
-          <p role="alert" className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+          <p role="alert" className="mb-4 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
             {pinError}
           </p>
         )}
@@ -257,8 +257,8 @@ export default function ConfiguracionPage() {
       <Card className="mt-4 max-w-xl p-4">
         <div className="mb-3 flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2">
-            <Printer className="h-4 w-4 shrink-0 text-gray-500" />
-            <h2 className="text-sm font-semibold text-gray-900">Impresora térmica</h2>
+            <Printer className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <h2 className="text-sm font-semibold text-foreground">Impresora térmica</h2>
           </div>
           <Button variant="secondary" size="sm" onClick={() => setImpresoraAbierto(true)}>
             {destino ? 'Cambiar' : 'Configurar'}
@@ -266,19 +266,19 @@ export default function ConfiguracionPage() {
         </div>
 
         {destinoCargando ? (
-          <p className="text-sm text-gray-400">Buscando la configuración…</p>
+          <p className="text-sm text-muted-foreground">Buscando la configuración…</p>
         ) : destino ? (
-          <p className="text-sm text-gray-700">
+          <p className="text-sm text-foreground">
             Imprimiendo en <span className="font-mono text-xs">{describirDestino(destino)}</span>
           </p>
         ) : (
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-muted-foreground">
             No hay impresora configurada. Sin ella el POS funciona igual, pero no sale el ticket: los botones de
             «Térmica» abren directamente esta pantalla.
           </p>
         )}
 
-        <div className="mt-3 rounded-lg bg-gray-50 p-3 text-xs text-gray-500">
+        <div className="mt-3 rounded-lg bg-muted p-3 text-xs text-muted-foreground">
           Antes de dar por buena una impresora USB, pruebe una impresión desde el diálogo. Con el controlador de la
           marca en vez de «Texto sin formato» el ticket sale sin formato ni corte, y eso no se ve hasta que hay papel
           en la impresora.
@@ -288,8 +288,8 @@ export default function ConfiguracionPage() {
       <Card className="mt-4 max-w-xl p-4">
         <div className="mb-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <DatabaseBackup className="h-4 w-4 text-gray-500" />
-            <h2 className="text-sm font-semibold text-gray-900">Copias de seguridad</h2>
+            <DatabaseBackup className="h-4 w-4 text-muted-foreground" />
+            <h2 className="text-sm font-semibold text-foreground">Copias de seguridad</h2>
           </div>
           <Button variant="secondary" size="sm" onClick={hacerCopia} disabled={backupCreando}>
             <RefreshCw className="h-4 w-4" /> {backupCreando ? 'Creando…' : 'Crear copia'}
@@ -297,30 +297,30 @@ export default function ConfiguracionPage() {
         </div>
 
         {backupHoy && (
-          <p role="status" className="mb-3 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">
+          <p role="status" className="mb-3 rounded-lg bg-success/10 p-3 text-sm text-success">
             Hoy ya hay una copia automática. La siguiente se hace al abrir el POS mañana.
           </p>
         )}
         {backupMsj && (
-          <p role="status" className="mb-3 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">
+          <p role="status" className="mb-3 rounded-lg bg-success/10 p-3 text-sm text-success">
             {backupMsj}
           </p>
         )}
         {backupError && (
-          <p role="alert" className="mb-3 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+          <p role="alert" className="mb-3 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
             {backupError}
           </p>
         )}
 
         {backups.length === 0 ? (
-          <p className="text-sm text-gray-500">Aún no hay copias de seguridad.</p>
+          <p className="text-sm text-muted-foreground">Aún no hay copias de seguridad.</p>
         ) : (
-          <ul className="divide-y divide-gray-100">
+          <ul className="divide-y divide-border">
             {backups.map((b) => (
               <li key={b.nombre} className="flex items-center gap-3 py-2 text-sm">
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium text-gray-800">{b.nombre}</p>
-                  <p className="text-xs text-gray-500">
+                  <p className="truncate font-medium text-foreground">{b.nombre}</p>
+                  <p className="text-xs text-muted-foreground">
                     {formatearFecha(b.fecha)} · {formatearBytes(b.tamano_bytes)}
                   </p>
                 </div>
@@ -337,7 +337,7 @@ export default function ConfiguracionPage() {
           </ul>
         )}
 
-        <div className="mt-4 rounded-lg bg-gray-50 p-3 text-xs text-gray-500">
+        <div className="mt-4 rounded-lg bg-muted p-3 text-xs text-muted-foreground">
           Se guarda una copia automática cada día en tu carpeta de Documentos, dentro de{' '}
           <span className="font-mono">tienda\backups</span>. Las copias manuales se suman a las automáticas y se
           conservan las 30 más recientes.

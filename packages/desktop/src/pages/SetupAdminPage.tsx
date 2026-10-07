@@ -59,12 +59,12 @@ export default function SetupAdminPage() {
   if (!necesita) return <Navigate to="/login" replace />;
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-100 p-4">
+    <div className="flex min-h-screen items-center justify-center bg-muted p-4">
       <Card className="w-full max-w-sm p-6">
         <div className="mb-5 text-center">
-          <ShieldCheck className="mx-auto mb-2 h-10 w-10 text-emerald-600" />
-          <h1 className="text-lg font-bold text-gray-900">Primera configuración</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <ShieldCheck className="mx-auto mb-2 h-10 w-10 text-primary" />
+          <h1 className="text-lg font-bold text-foreground">Primera configuración</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             Crea el usuario administrador y asígnale un PIN de 4 dígitos
           </p>
         </div>
@@ -104,7 +104,7 @@ export default function SetupAdminPage() {
           </div>
 
           {error && (
-            <p role="alert" className="mt-2 text-center text-sm text-red-600">
+            <p role="alert" className="mt-2 text-center text-sm text-destructive">
               {error}
             </p>
           )}

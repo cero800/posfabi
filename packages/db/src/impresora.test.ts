@@ -331,6 +331,12 @@ describe('imprimir · destino de red', () => {
     });
   });
 
+  // El `.local` es como se nombran las impresoras de red en la tienda, y ese
+  // nombre lo resuelve el buscador del sistema con mDNS. Sin un resolutor que
+  // conteste mDNS la espera se va por encima del plazo por defecto de 5 s, antes
+  // de llegar al `setTimeout` del socket. Lo que aquí se comprueba es que el
+  // mensaje repita la dirección que escribió el cajero, no la velocidad, así que
+  // el plazo sube y la aserción no se toca.
   it('falla si el host no existe, diciendo cuál dirección no encontró', async () => {
     // Una dirección mal escrita es el error de configuración más probable, y el
     // mensaje tiene que repetir la dirección: el cajero la está copiando de la
@@ -342,7 +348,7 @@ describe('imprimir · destino de red', () => {
       codigo: CODIGO_ERROR.impresora,
       message: expect.stringContaining('impresora-que-no-existe.local'),
     });
-  });
+  }, 15000);
 
   it('da por caída una impresora que no contesta, sin colgar el POS', async () => {
     // La impresora apagada detrás de un cortafuegos no rechaza la conexión: la

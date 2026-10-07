@@ -192,17 +192,17 @@ export default function ProductosPage() {
       <Card className="mb-4 p-3">
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative min-w-56 flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
               placeholder="Buscar por nombre o código…"
-              className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-9 pr-3 text-sm shadow-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+              className="w-full rounded-lg border border-border bg-background py-2 pl-9 pr-3 text-sm shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/40 focus:outline-none"
             />
           </div>
           {categorias.length > 0 && (
             <div className="flex w-full items-center gap-2 sm:w-56">
-              <FolderTree className="h-4 w-4 shrink-0 text-gray-400" />
+              <FolderTree className="h-4 w-4 shrink-0 text-muted-foreground" />
               <Select
                 aria-label="Filtrar por categoría"
                 value={categoriaFiltro}
@@ -242,14 +242,14 @@ export default function ProductosPage() {
             </THead>
             <tbody>
               {filtrados.map((p) => (
-                <tr key={p.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
-                  <Td className="font-mono text-xs text-gray-500">{p.codigo}</Td>
+                <tr key={p.id} className="border-b border-border last:border-0 hover:bg-muted/50">
+                  <Td className="font-mono text-xs text-muted-foreground">{p.codigo}</Td>
                   <Td>
-                    <span className="font-medium text-gray-900">{p.nombre}</span>
-                    {p.descripcion && <span className="block text-xs text-gray-400">{p.descripcion}</span>}
+                    <span className="font-medium text-foreground">{p.nombre}</span>
+                    {p.descripcion && <span className="block text-xs text-muted-foreground">{p.descripcion}</span>}
                   </Td>
-                  <Td className="text-gray-500">{nombreDe(p.categoria_id) ?? '—'}</Td>
-                  <Td className="text-right text-gray-500">{p.stock_minimo}</Td>
+                  <Td className="text-muted-foreground">{nombreDe(p.categoria_id) ?? '—'}</Td>
+                  <Td className="text-right text-muted-foreground">{p.stock_minimo}</Td>
                   <Td>{p.unidad_medida}</Td>
                   <Td className="text-right">{formatUsdCents(p.precio_base)}</Td>
                   <Td>
@@ -261,7 +261,7 @@ export default function ProductosPage() {
                         <Pencil className="h-4 w-4" />
                       </Button>
                       <Button variant="ghost" size="sm" aria-label={`Eliminar ${p.nombre}`} onClick={() => eliminar(p)}>
-                        <Trash2 className="h-4 w-4 text-red-500" />
+                        <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </div>
                   </Td>
@@ -289,7 +289,7 @@ export default function ProductosPage() {
       >
         <div className="space-y-3">
           {error && (
-            <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+            <p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
               {error}
             </p>
           )}

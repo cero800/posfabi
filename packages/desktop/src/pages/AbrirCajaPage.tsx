@@ -68,7 +68,10 @@ export default function AbrirCajaPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-100 p-4">
+    // Este arranque va fuera del Shell, así que tiene que poner su propio fondo y
+    // en el mismo tono que el Shell para que la transición al entrar a la venta no
+    // dé un salto de color.
+    <div className="flex min-h-screen items-center justify-center bg-muted p-4">
       <Card className="w-full max-w-md">
         <CardHeader
           title="Abrir caja"
@@ -86,7 +89,7 @@ export default function AbrirCajaPage() {
           />
 
           {error && (
-            <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+            <p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
               {error}
             </p>
           )}

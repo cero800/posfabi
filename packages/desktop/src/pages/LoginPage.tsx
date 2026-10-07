@@ -65,14 +65,14 @@ export default function LoginPage() {
   if (operador) return <Navigate to="/" replace />;
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-100 p-4">
+    <div className="flex min-h-screen items-center justify-center bg-muted p-4">
       <Card className="w-full max-w-sm p-6">
         {!seleccionado ? (
           <>
             <div className="mb-5 text-center">
-              <CircleUserRound className="mx-auto mb-2 h-10 w-10 text-emerald-600" />
-              <h1 className="text-lg font-bold text-gray-900">Elige tu operador</h1>
-              <p className="mt-1 text-sm text-gray-500">Inicia turno seleccionando tu nombre</p>
+              <CircleUserRound className="mx-auto mb-2 h-10 w-10 text-primary" />
+              <h1 className="text-lg font-bold text-foreground">Elige tu operador</h1>
+              <p className="mt-1 text-sm text-muted-foreground">Inicia turno seleccionando tu nombre</p>
             </div>
 
             {cargando ? (
@@ -80,13 +80,13 @@ export default function LoginPage() {
                 <Spinner />
               </div>
             ) : error ? (
-              <p role="alert" className="text-center text-sm text-red-600">
+              <p role="alert" className="text-center text-sm text-destructive">
                 {error}
               </p>
             ) : (
               <ul className="grid gap-2">
                 {usuarios.length === 0 && (
-                  <li className="text-center text-sm text-gray-500">No hay operadores activos.</li>
+                  <li className="text-center text-sm text-muted-foreground">No hay operadores activos.</li>
                 )}
                 {usuarios.map((u) => (
                   <li key={u.id}>
@@ -100,7 +100,7 @@ export default function LoginPage() {
                       }}
                     >
                       <span className="font-medium">{u.nombre}</span>
-                      <span className="ml-auto text-xs uppercase tracking-wide text-gray-400">{u.rol}</span>
+                      <span className="ml-auto text-xs uppercase tracking-wide text-muted-foreground">{u.rol}</span>
                     </Button>
                   </li>
                 ))}
@@ -110,9 +110,9 @@ export default function LoginPage() {
         ) : (
           <>
             <div className="mb-5 text-center">
-              <CircleUserRound className="mx-auto mb-2 h-10 w-10 text-emerald-600" />
-              <h1 className="text-lg font-bold text-gray-900">{seleccionado.nombre}</h1>
-              <p className="mt-1 text-sm text-gray-500">Ingresa tu PIN de 4 dígitos</p>
+              <CircleUserRound className="mx-auto mb-2 h-10 w-10 text-primary" />
+              <h1 className="text-lg font-bold text-foreground">{seleccionado.nombre}</h1>
+              <p className="mt-1 text-sm text-muted-foreground">Ingresa tu PIN de 4 dígitos</p>
             </div>
 
             <form
@@ -132,7 +132,7 @@ export default function LoginPage() {
                 placeholder="••••"
               />
               {error && (
-                <p role="alert" className="mt-2 text-center text-sm text-red-600">
+                <p role="alert" className="mt-2 text-center text-sm text-destructive">
                   {error}
                 </p>
               )}

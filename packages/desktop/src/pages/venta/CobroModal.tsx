@@ -150,7 +150,7 @@ export default function CobroModal({ abre, total, clienteId, sePermiteCredito, o
         {esContado && (
           <div className="space-y-2">
             {pagos.map((p, i) => (
-              <div key={p.id} className="flex gap-2 rounded-lg border border-gray-200 p-2">
+              <div key={p.id} className="flex gap-2 rounded-lg border border-border p-2">
                 <div className="w-24">
                   <Select
                     aria-label={`Moneda pago ${i + 1}`}
@@ -213,59 +213,59 @@ export default function CobroModal({ abre, total, clienteId, sePermiteCredito, o
           </div>
         )}
 
-        <div className="space-y-1.5 rounded-lg bg-gray-50 p-3 text-sm">
+        <div className="space-y-1.5 rounded-lg bg-muted p-3 text-sm">
           <div className="flex justify-between">
-            <span className="text-gray-600">Subtotal</span>
+            <span className="text-muted-foreground">Subtotal</span>
             <strong>{formatUsdCents(total)}</strong>
           </div>
           {descuentoCents ? (
             <div className="flex justify-between">
-              <span className="text-gray-600">Descuento</span>
-              <strong className="text-red-600">-{formatUsdCents(descuentoCents)}</strong>
+              <span className="text-muted-foreground">Descuento</span>
+              <strong className="text-destructive">-{formatUsdCents(descuentoCents)}</strong>
             </div>
           ) : null}
-          <div className="flex justify-between border-t border-gray-200 pt-2">
-            <span className="font-semibold text-gray-800">Total a pagar</span>
+          <div className="flex justify-between border-t border-border pt-2">
+            <span className="font-semibold text-foreground">Total a pagar</span>
             <span className="text-right">
               <strong className="block text-lg">{formatUsdCents(totalConDescuento)}</strong>
-              <strong className="block text-sm text-emerald-700">{formatVesCents(Math.round(totalConDescuento * tasa))}</strong>
+              <strong className="block text-sm text-primary">{formatVesCents(Math.round(totalConDescuento * tasa))}</strong>
             </span>
           </div>
 
           {esContado && (
             <>
               <div className="flex justify-between">
-                <span className="text-gray-600">Pagado</span>
+                <span className="text-muted-foreground">Pagado</span>
                 <span className="text-right">
                   <strong className="block">{formatUsdCents(validacion.pagadoUsd)}</strong>
-                  <span className="block text-xs text-gray-500">{formatVesCents(Math.round(validacion.pagadoUsd * tasa))}</span>
+                  <span className="block text-xs text-muted-foreground">{formatVesCents(Math.round(validacion.pagadoUsd * tasa))}</span>
                 </span>
               </div>
               {!validacion.valido && validacion.faltanteUsd > 0 && (
-                <p className="text-xs text-red-600">
+                <p className="text-xs text-destructive">
                   Faltan {formatUsdCents(validacion.faltanteUsd)}{' '}
-                  <span className="text-gray-400">({formatVesCents(Math.round(validacion.faltanteUsd * tasa))})</span>
+                  <span className="text-muted-foreground">({formatVesCents(Math.round(validacion.faltanteUsd * tasa))})</span>
                 </p>
               )}
               {validacion.valido && validacion.pagadoUsd > totalConDescuento && (
-                <p className="text-xs font-semibold text-emerald-600">
+                <p className="text-xs font-semibold text-success">
                   Vuelto: {formatUsdCents(validacion.pagadoUsd - totalConDescuento)}{' '}
-                  <span className="font-normal text-gray-400">
+                  <span className="font-normal text-muted-foreground">
                     ({formatVesCents(Math.round((validacion.pagadoUsd - totalConDescuento) * tasa))})
                   </span>
                 </p>
               )}
               {referenciaFaltante && (
-                <p className="text-xs text-red-600">El pago móvil requiere el número de referencia</p>
+                <p className="text-xs text-destructive">El pago móvil requiere el número de referencia</p>
               )}
             </>
           )}
         </div>
 
-        <p className="text-xs text-gray-500">Equivalente Bs a la tasa {formatVesCents(Math.round(tasa * 100))}</p>
+        <p className="text-xs text-muted-foreground">Equivalente Bs a la tasa {formatVesCents(Math.round(tasa * 100))}</p>
 
         {error && (
-          <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+          <p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
             {error}
           </p>
         )}

@@ -220,15 +220,15 @@ export default function CategoriasPage() {
               {categorias.map((c) => {
                 const padre = padreDe(c);
                 return (
-                  <tr key={c.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
-                    <Td className="font-medium text-gray-900">{c.nombre}</Td>
-                    <Td className="text-gray-500">{padre?.nombre ?? '—'}</Td>
+                  <tr key={c.id} className="border-b border-border last:border-0 hover:bg-muted/50">
+                    <Td className="font-medium text-foreground">{c.nombre}</Td>
+                    <Td className="text-muted-foreground">{padre?.nombre ?? '—'}</Td>
                     <Td className="text-right">{c.orden}</Td>
                     <Td className="text-right">
                       {(c.productos ?? 0) > 0 ? (
                         <Badge tone="blue">{c.productos}</Badge>
                       ) : (
-                        <span className="text-gray-400">0</span>
+                        <span className="text-muted-foreground">0</span>
                       )}
                     </Td>
                     <Td className="text-right">
@@ -242,7 +242,7 @@ export default function CategoriasPage() {
                           aria-label={`Desactivar ${c.nombre}`}
                           onClick={() => desactivar(c)}
                         >
-                          <Trash2 className="h-4 w-4 text-red-500" />
+                          <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                       </div>
                     </Td>
@@ -271,7 +271,7 @@ export default function CategoriasPage() {
       >
         <div className="space-y-3">
           {error && (
-            <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+            <p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
               {error}
             </p>
           )}

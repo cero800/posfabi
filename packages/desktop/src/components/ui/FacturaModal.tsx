@@ -144,20 +144,20 @@ export function FacturaModal({ factura, onClose }: Props) {
         role="dialog"
         aria-modal="true"
         aria-label={`Factura ${factura.numero_factura}`}
-        className="relative flex max-h-[90vh] w-full max-w-2xl flex-col rounded-xl bg-white shadow-xl"
+        className="relative flex max-h-[90vh] w-full max-w-2xl flex-col rounded-xl bg-popover shadow-xl"
       >
-        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-gray-100 px-5 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-border px-5 py-3">
           <div className="min-w-0">
-            <h2 className="text-sm font-semibold text-gray-900">Factura</h2>
-            <p className="truncate text-xs text-gray-500">Venta #{factura.venta_id} · {factura.fecha.slice(0, 10)}</p>
+            <h2 className="text-sm font-semibold text-foreground">Factura</h2>
+            <p className="truncate text-xs text-muted-foreground">Venta #{factura.venta_id} · {factura.fecha.slice(0, 10)}</p>
             {rutaPdf && (
-              <p className="mt-0.5 truncate text-xs text-emerald-600">PDF guardado en {rutaPdf}</p>
+              <p className="mt-0.5 truncate text-xs text-success">PDF guardado en {rutaPdf}</p>
             )}
             {errorPdf && (
-              <p className="mt-0.5 truncate text-xs text-red-600">No se pudo guardar el PDF: {errorPdf}</p>
+              <p className="mt-0.5 truncate text-xs text-destructive">No se pudo guardar el PDF: {errorPdf}</p>
             )}
             {ticketMsg && (
-              <p className={`mt-0.5 truncate text-xs ${ticketMsg.tipo === 'ok' ? 'text-emerald-600' : 'text-red-600'}`}>
+              <p className={`mt-0.5 truncate text-xs ${ticketMsg.tipo === 'ok' ? 'text-success' : 'text-destructive'}`}>
                 {ticketMsg.texto}
                 {ticketMsg.tipo === 'error' && (
                   <button

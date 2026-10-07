@@ -169,14 +169,14 @@ export default function InventarioPage() {
       />
 
       {pendientes.length > 0 && (
-        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+        <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
           ¡Ojo! {pendientes.length} producto(s) con stock agotado o negativo:{' '}
           {pendientes.map((p) => p.nombre).join(', ')}.
         </div>
       )}
 
       {bajoMinimo.length > 0 && (
-        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+        <div className="mb-4 rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm text-warning">
           {bajoMinimo.length} producto(s) por debajo del mínimo: {bajoMinimo.map((p) => p.nombre).join(', ')}.
         </div>
       )}
@@ -184,7 +184,7 @@ export default function InventarioPage() {
       {categorias.length > 0 && (
         <Card className="mb-4 p-3">
           <div className="flex items-center gap-2">
-            <FolderTree className="h-4 w-4 shrink-0 text-gray-400" />
+            <FolderTree className="h-4 w-4 shrink-0 text-muted-foreground" />
             <Select
               aria-label="Filtrar por categoría"
               value={categoriaFiltro}
@@ -225,12 +225,12 @@ export default function InventarioPage() {
               {filtrados.map((s) => {
                 const bajo = s.stock_minimo > 0 && s.cantidad_disponible < s.stock_minimo;
                 return (
-                  <tr key={s.producto_id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
-                    <Td className="font-mono text-xs text-gray-500">{s.codigo}</Td>
-                    <Td className="font-medium text-gray-900">{s.nombre}</Td>
-                    <Td className="text-gray-500">{s.categoria_nombre ?? '—'}</Td>
+                  <tr key={s.producto_id} className="border-b border-border last:border-0 hover:bg-muted/50">
+                    <Td className="font-mono text-xs text-muted-foreground">{s.codigo}</Td>
+                    <Td className="font-medium text-foreground">{s.nombre}</Td>
+                    <Td className="text-muted-foreground">{s.categoria_nombre ?? '—'}</Td>
                     <Td className="text-right font-semibold">{s.cantidad_disponible}</Td>
-                    <Td className="text-right text-gray-500">{s.stock_minimo}</Td>
+                    <Td className="text-right text-muted-foreground">{s.stock_minimo}</Td>
                     <Td>{s.unidad_medida}</Td>
                     <Td>
                       <Badge tone={s.cantidad_disponible <= 0 ? 'red' : bajo ? 'amber' : 'green'}>
@@ -275,7 +275,7 @@ export default function InventarioPage() {
       >
         <div className="space-y-3">
           {error && (
-            <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+            <p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
               {error}
             </p>
           )}
@@ -314,7 +314,7 @@ export default function InventarioPage() {
 
           {accion === 'entrada' && (
             <div>
-              <span className="mb-1 block text-sm font-medium text-gray-700">Fecha</span>
+              <span className="mb-1 block text-sm font-medium text-foreground">Fecha</span>
               <DatePicker value={fecha} onChange={setFecha} aria-label="Fecha de la entrada" />
             </div>
           )}

@@ -99,36 +99,36 @@ export default function PrecioEspecialModal({
     >
       <div className="space-y-3">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
             placeholder="Buscar producto por nombre o código…"
-            className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-9 pr-3 text-sm shadow-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+            className="w-full rounded-lg border border-border bg-background py-2 pl-9 pr-3 text-sm shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/40 focus:outline-none"
           />
         </div>
 
         {error && (
-          <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+          <p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
             {error}
           </p>
         )}
 
         {filtrados.length === 0 ? (
-          <p className="py-6 text-center text-sm text-gray-500">Sin productos que coincidan.</p>
+          <p className="py-6 text-center text-sm text-muted-foreground">Sin productos que coincidan.</p>
         ) : (
-          <ul className="divide-y divide-gray-100">
+          <ul className="divide-y divide-border">
             {filtrados.map((p) => {
               const especial = preciosEspeciales[p.id];
               return (
                 <li key={p.id} className="py-2">
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-gray-800">{p.nombre}</p>
-                      <p className="text-xs text-gray-400">
+                      <p className="truncate text-sm font-medium text-foreground">{p.nombre}</p>
+                      <p className="text-xs text-muted-foreground">
                         {p.codigo} · Base {formatUsdCents(p.precio_base)}
                         {especial != null && (
-                          <span className="ml-1 text-emerald-600">
+                          <span className="ml-1 text-primary">
                             · Especial {formatUsdCents(especial)}
                           </span>
                         )}
@@ -144,7 +144,7 @@ export default function PrecioEspecialModal({
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') void guardar(p);
                         }}
-                        className="w-24 rounded-md border border-gray-300 px-2 py-1 text-right text-sm focus:border-emerald-500 focus:outline-none"
+                        className="w-24 rounded-md border border-border px-2 py-1 text-right text-sm focus:border-primary focus:outline-none"
                       />
                       <Button size="sm" disabled={activoId === p.id} onClick={() => guardar(p)}>
                         {activoId === p.id ? '…' : 'Guardar'}
