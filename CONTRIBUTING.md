@@ -1,15 +1,18 @@
 # Contribuir
 
-Gracias por colaborar con Kalientico. Este documento describe el flujo y el
+Gracias por colaborar con Tienda. Este documento describe el flujo y el
 estándar de calidad del proyecto.
 
 ## Pila técnica
 
-- Monorepo pnpm: `packages/core` (tipos/lógica compartida), `packages/desktop`
-  (app de escritorio Tauri 2 + React + Vite).
-- Backend nativo en Rust (SQLite con rusqlite).
-- Frontend en TypeScript + React 18, Tailwind CSS y Zustand.
-- Pruebas: Vitest (frontend) y `cargo test` (Rust).
+- Monorepo pnpm: `packages/core` (tipos y moneda compartidos), `packages/db`
+  (el backend entero, en TypeScript sobre `node:sqlite`) y `packages/desktop`
+  (interfaz Tauri 2 + React + Vite + Tailwind).
+- Rust solo como carcasa: `src-tauri/src` resuelve carpetas (`rutas_app`) y
+  lanza el sidecar. No hay lógica de negocio en Rust.
+- Toda la comunicación pasa por JSON-RPC 2.0 — stdio (NDJSON) o `--http`.
+- Pruebas: Vitest en `packages/db` y `packages/desktop`, `cargo test` en la
+  carcasa.
 
 ## Flujo de trabajo
 
@@ -19,10 +22,9 @@ estándar de calidad del proyecto.
 4. Verifica en local antes del pull request:
 
    ```bash
-   pnpm --filter @tienda/core build
-   pnpm --filter @tienda/desktop build      # typecheck + vite
+   pnpm test               # db + desktop
+   pnpm typecheck          # core + db + desktop
    pnpm --filter @tienda/desktop lint
-   pnpm --filter @tienda/desktop test
    cd packages/desktop/src-tauri
    cargo fmt --all --check
    cargo clippy --all-targets -- -D warnings
@@ -30,12 +32,12 @@ estándar de calidad del proyecto.
    ```
 
 5. Asegúrate de que el CI pase (corre las mismas comprobaciones).
-6. Abre el pull request contra `main` describiendo qué hace y cómo se probó.
+6. Abre el pull request describiendo qué hace y cómo se probó.
 
 ## Estándares
 
 - No introducir comentarios salvo que aporten contexto (el código debe ser
   autoexplicativo).
-- Seguir los formatos de `cargo fmt` y `prettier`/ESLint del repo.
+- Seguir los formatos de ESLint y `cargo fmt` del repo.
 - Nunca subir datos de negocio, bases de datos reales ni secretos.
 - Mantener `CHANGELOG.md` al día en `[Unreleased]`.

@@ -17,9 +17,9 @@ Por favor, incluye:
 - Los PIN de operador se guardan en texto plano en la base local por ahora; el
   repositorio **no** almacena credenciales de ningún servicio externo.
 - Toda la información sensible vive en la base de datos local
-  (`panaderia.db`) dentro de los datos de la aplicación; nunca se sube al repo.
+  (`tienda.db`) dentro de los datos de la aplicación; nunca se sube al repo.
 - La base de datos del negocio se respalda automáticamente una vez al día en
-  `Documentos/kalientico/backups/`.
+  `Documentos/tienda/backups/`.
 - Los binarios distribuidos **no están firmados** aún. Antes de compartir
   instaladores en producción, firma los ejecutables:
 

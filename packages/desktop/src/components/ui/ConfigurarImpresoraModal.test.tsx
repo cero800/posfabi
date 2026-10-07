@@ -181,7 +181,6 @@ describe('ConfigurarImpresoraModal', () => {
       host: '10.0.0.9',
       puerto: 515,
     });
-    const user = userEvent.setup();
     render(<ConfigurarImpresoraModal open onClose={() => {}} onGuardado={() => {}} />);
 
     expect(await screen.findByLabelText(/Dirección de la impresora/)).toHaveValue('10.0.0.9');

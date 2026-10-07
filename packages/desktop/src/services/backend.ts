@@ -223,6 +223,7 @@ async function lanzar(rutas: Rutas): Promise<Conexion> {
       `No se pudo lanzar «${PROGRAMA}». Suele significar que el backend no está compilado: ` +
         `en la PC de la tienda se genera con \`pnpm --filter @tienda/db build:sea\`. ` +
         `Detalle: ${detalle}`,
+      { cause: e },
     );
   }
 

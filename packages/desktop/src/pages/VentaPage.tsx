@@ -32,7 +32,6 @@ import {
   seccionesRaiz,
   hijasDe,
   etiquetaSinCategoria,
-  SIN_CATEGORIA_SEL,
   TODAS,
   type Seleccion,
 } from './venta/secciones';

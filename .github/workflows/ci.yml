@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, master]
   pull_request:
 
 concurrency:
@@ -28,9 +28,11 @@ jobs:
 
       - uses: pnpm/action-setup@v6
 
+      # 24 y no menor: el backend usa `node:sqlite`, que sin bandera
+      # experimental solo existe a partir de Node 24.
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
 
       - uses: dtolnay/rust-toolchain@stable
@@ -44,14 +46,15 @@ jobs:
       - name: Instalar dependencias
         run: pnpm install --frozen-lockfile
 
-      - name: Compilar núcleo compartido
-        run: pnpm --filter @tienda/core build
+      # Compila `@tienda/core`, que es lo que consumen los tests de `packages/db`.
+      - name: Typecheck
+        run: pnpm typecheck
 
-      - name: Typecheck + build frontend
-        run: pnpm --filter @tienda/desktop build
+      - name: Build frontend
+        run: pnpm --filter @tienda/desktop exec vite build
 
-      - name: Tests frontend
-        run: pnpm --filter @tienda/desktop test
+      - name: Tests (db + desktop)
+        run: pnpm test
 
       - name: Lint frontend
         run: pnpm --filter @tienda/desktop lint
