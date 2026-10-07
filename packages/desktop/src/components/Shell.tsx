@@ -11,6 +11,7 @@ import {
   LogOut,
   Coins,
   Settings,
+  Store,
 } from 'lucide-react';
 import { useSesion } from '../store/sesion';
 import { obtenerDatosNegocio } from '../services/db';
@@ -36,6 +37,17 @@ const nav: Array<{ to: string; label: string; icon: ReactNode; soloAdmin?: boole
 const NOMBRE_POR_DEFECTO = 'POS Tienda';
 
 const esAdmin = (rol?: string) => rol === 'admin';
+
+/** Iniciales del operador para el avatar de la barra superior. */
+function inicialesDe(nombre: string | undefined): string {
+  if (!nombre) return '?';
+  return nombre
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0]?.toUpperCase() ?? '')
+    .join('');
+}
 
 export default function Shell() {
   const navegar = useNavigate();
@@ -68,26 +80,64 @@ export default function Shell() {
   const items = nav.filter((item) => !item.soloAdmin || esAdmin(operador?.rol));
 
   return (
-    <div className="flex h-screen bg-muted">
-      <aside className="flex w-56 shrink-0 flex-col border-r border-border bg-card">
-        <div className="border-b border-border px-4 py-4">
-          <p className="truncate text-sm font-bold text-card-foreground">{negocio || NOMBRE_POR_DEFECTO}</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">Punto de venta</p>
+    <div className="flex h-screen flex-col bg-muted">
+      {/* App bar: identidad y operación del día. Aquí vive también el interruptor
+          de tema, que es lo que las pruebas buscan en la barra superior. */}
+      <header className="shrink-0">
+        <div className="flex h-14 items-center justify-between gap-4 border-b border-border bg-card px-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-primary to-accent text-primary-foreground shadow-card">
+              <Store className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 leading-tight">
+              <p className="truncate text-sm font-bold text-card-foreground">{negocio || NOMBRE_POR_DEFECTO}</p>
+              <p className="text-xs text-muted-foreground">Punto de venta</p>
+            </div>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+            {/* Fecha y tasa del día: el contexto que el cajero consulta sin pedirlo. */}
+            <span className="hidden text-sm tabular-nums text-muted-foreground md:block">
+              {caja?.fecha?.slice(0, 10) ?? '—'}
+            </span>
+            <div className="flex items-center gap-1.5 rounded-lg bg-muted px-2.5 py-1.5 text-xs text-muted-foreground">
+              <span>Tasa</span>
+              <strong className="text-sm text-foreground" data-testid="tasa-bar">
+                {formatVesCents(Math.round(useSesion.getState().tasa * 100))}
+              </strong>
+            </div>
+            <TemaToggle />
+            <div className="hidden h-6 w-px bg-border sm:block" />
+            <div className="flex items-center gap-2">
+              <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent/10 text-sm font-bold text-accent">
+                {inicialesDe(operador?.nombre)}
+              </div>
+              <div className="hidden leading-tight lg:block">
+                <p className="max-w-32 truncate text-sm font-semibold text-foreground">{operador?.nombre}</p>
+                <p className="text-xs text-muted-foreground">{caja?.estado}</p>
+              </div>
+              <Button variant="ghost" size="sm" onClick={salir} aria-label="Cerrar sesión">
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
         </div>
 
-        <nav className="flex-1 space-y-1 px-2 py-3">
+        {/* Navegación horizontal: las secciones van en una cinta bajo la app bar,
+            no en una columna a la izquierda. El morado marca dónde estás. */}
+        <nav
+          aria-label="Secciones"
+          className="flex h-12 items-center gap-1 overflow-x-auto border-b border-border bg-card/60 px-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
           {items.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
               className={({ isActive }) =>
                 cn(
-                  'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                  // El morado se reserva para el estado activo: es el único acento
-                  // de la pantalla, y con nueve entradas del menú es la que
-                  // dice dónde estás sin gritar.
+                  'flex shrink-0 items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors',
                   isActive
-                    ? 'bg-accent/10 text-accent'
+                    ? 'bg-accent/10 text-accent ring-1 ring-inset ring-accent/20'
                     : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                 )
               }
@@ -97,40 +147,11 @@ export default function Shell() {
             </NavLink>
           ))}
         </nav>
+      </header>
 
-        <div className="border-t border-border p-3">
-          <div className="mb-2 flex items-center gap-2 rounded-lg bg-muted px-3 py-2">
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-foreground">{operador?.nombre}</p>
-              <p className="text-xs text-muted-foreground">{caja?.estado}</p>
-            </div>
-            <Button variant="ghost" size="sm" onClick={salir} aria-label="Cerrar sesión">
-              <LogOut className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </aside>
-
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-card px-4">
-          <div className="flex items-center gap-3 text-sm text-muted-foreground">
-            <span>{caja?.fecha?.slice(0, 10) ?? '—'}</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm">
-            <TemaToggle />
-            <span className="text-muted-foreground">
-              Tasa del día:{' '}
-              <strong className="text-foreground" data-testid="tasa-bar">
-                {formatVesCents(Math.round(useSesion.getState().tasa * 100))}
-              </strong>
-            </span>
-          </div>
-        </header>
-
-        <main className="min-h-0 flex-1 overflow-auto p-4">
-          <Outlet />
-        </main>
-      </div>
+      <main className="min-h-0 flex-1 overflow-auto p-4">
+        <Outlet />
+      </main>
     </div>
   );
 }

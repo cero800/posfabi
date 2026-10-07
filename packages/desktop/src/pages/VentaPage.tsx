@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Minus, Plus, Search, ShoppingCart, Trash2, X } from 'lucide-react';
+import { Minus, PanelRightClose, Plus, Search, ShoppingCart, Trash2, X } from 'lucide-react';
 import type { Categoria, Cliente, Factura, Producto, VentaInput } from '@tienda/core';
 import {
   crearVenta,
@@ -53,6 +53,11 @@ export default function VentaPage() {
   const [factura, setFactura] = useState<Factura | null>(null);
   const [cantidadPara, setCantidadPara] = useState<Producto | null>(null);
   const [cantidad, setCantidad] = useState('1');
+  // El carrito es un panel que se puede ocultar para dejar el catálogo a lo
+  // ancho (el patrón de ticket de Square/Toast). Abierto por defecto: en una
+  // pantalla de caja el ticket tiene que verse desde el primer segundo, y el
+  // cajero lo cierra cuando quiere catálogo entero.
+  const [carritoAbierto, setCarritoAbierto] = useState(true);
 
   const lineas = useCarrito((s) => s.lineas);
   const agregar = useCarrito((s) => s.agregar);
@@ -222,6 +227,31 @@ export default function VentaPage() {
               <X className="h-4 w-4" />
             </Button>
           )}
+
+          {/* El panel del carrito se oculta para que el catálogo respire. Mientras
+              esté cerrado, este botón lleva la cuenta y el importe de lo que se
+              lleva, y con un clic se vuelve al ticket. */}
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setCarritoAbierto((v) => !v)}
+            aria-expanded={carritoAbierto}
+            aria-label={carritoAbierto ? 'Ocultar carrito' : 'Ver carrito'}
+            className="shrink-0"
+          >
+            <ShoppingCart className="h-4 w-4" />
+            {!carritoAbierto && (
+              <>
+                <span>Carrito</span>
+                {lineas.length > 0 && (
+                  <span className="grid h-5 min-w-5 place-items-center rounded-full bg-primary px-1 text-xs font-bold text-primary-foreground tabular-nums">
+                    {lineas.length}
+                  </span>
+                )}
+                <strong className="tabular-nums">{formatUsdCents(subtotal)}</strong>
+              </>
+            )}
+          </Button>
         </div>
 
         <PestanasSeccion
@@ -241,9 +271,24 @@ export default function VentaPage() {
         />
       </div>
 
-      {/* Carrito */}
-      <Card className="flex w-80 shrink-0 flex-col">
-        <CardHeader title="Carrito" subtitle={`Tasa ${formatVesCents(Math.round(tasa * 100))}`} />
+      {/* Carrito: panel derecho que se puede ocultar. Cerrado no se pinta, y el
+          botón de la barra superior del catálogo lo vuelve a abrir. */}
+      {carritoAbierto && (
+        <Card className="flex w-80 shrink-0 flex-col">
+          <CardHeader
+            title="Carrito"
+            subtitle={`Tasa ${formatVesCents(Math.round(tasa * 100))}`}
+            actions={
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setCarritoAbierto(false)}
+                aria-label="Ocultar carrito"
+              >
+                <PanelRightClose className="h-4 w-4" />
+              </Button>
+            }
+          />
         <div className="flex min-h-0 flex-1 flex-col">
           <div className="px-3 pt-2">
             <ClienteAutocomplete
@@ -326,6 +371,7 @@ export default function VentaPage() {
           </div>
         </div>
       </Card>
+      )}
 
       {clienteId != null && (
         <CobroModal
