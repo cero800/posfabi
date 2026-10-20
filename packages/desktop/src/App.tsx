@@ -12,7 +12,6 @@ const LoginPage = lazy(() => import('./pages/LoginPage'));
 const SetupAdminPage = lazy(() => import('./pages/SetupAdminPage'));
 const AbrirCajaPage = lazy(() => import('./pages/AbrirCajaPage'));
 const VentaPage = lazy(() => import('./pages/VentaPage'));
-const ProductosPage = lazy(() => import('./pages/ProductosPage'));
 const CategoriasPage = lazy(() => import('./pages/CategoriasPage'));
 const ClientesPage = lazy(() => import('./pages/ClientesPage'));
 const InventarioPage = lazy(() => import('./pages/InventarioPage'));
@@ -40,10 +39,13 @@ export default function App() {
                 <Route element={<Shell />}>
                   <Route path="/" element={<Navigate to="/venta" replace />} />
                   <Route path="/venta" element={<VentaPage />} />
-                  <Route path="/productos" element={<ProductosPage />} />
                   <Route path="/categorias" element={<CategoriasPage />} />
                   <Route path="/clientes" element={<ClientesPage />} />
                   <Route path="/inventario" element={<InventarioPage />} />
+                  {/* La pantalla de «Productos» ya no existe: el catálogo y las
+                      existencias son la misma pantalla, Inventario. La ruta se
+                      conserva para que un enlace viejo no caiga en el 404. */}
+                  <Route path="/productos" element={<Navigate to="/inventario" replace />} />
                   <Route path="/reporte" element={<ReportePage />} />
                   <Route path="/deudores" element={<DeudoresPage />} />
                   <Route path="/cerrar-caja" element={<CerrarCajaPage />} />

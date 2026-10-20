@@ -2,7 +2,6 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useState, type ReactNode } from 'react';
 import {
   ShoppingCart,
-  Package,
   FolderTree,
   Users,
   Boxes,
@@ -23,7 +22,6 @@ import { TemaToggle } from './TemaToggle';
 
 const nav: Array<{ to: string; label: string; icon: ReactNode; soloAdmin?: boolean }> = [
   { to: '/venta', label: 'Venta', icon: <ShoppingCart className="h-4 w-4" /> },
-  { to: '/productos', label: 'Productos', icon: <Package className="h-4 w-4" /> },
   { to: '/categorias', label: 'Categorías', icon: <FolderTree className="h-4 w-4" /> },
   { to: '/clientes', label: 'Clientes', icon: <Users className="h-4 w-4" /> },
   { to: '/inventario', label: 'Inventario', icon: <Boxes className="h-4 w-4" /> },
