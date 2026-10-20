@@ -22,9 +22,9 @@ import { TemaToggle } from './TemaToggle';
 
 const nav: Array<{ to: string; label: string; icon: ReactNode; soloAdmin?: boolean }> = [
   { to: '/venta', label: 'Venta', icon: <ShoppingCart className="h-4 w-4" /> },
+  { to: '/inventario', label: 'Inventario', icon: <Boxes className="h-4 w-4" /> },
   { to: '/categorias', label: 'Categorías', icon: <FolderTree className="h-4 w-4" /> },
   { to: '/clientes', label: 'Clientes', icon: <Users className="h-4 w-4" /> },
-  { to: '/inventario', label: 'Inventario', icon: <Boxes className="h-4 w-4" /> },
   { to: '/reporte', label: 'Reporte', icon: <BarChart3 className="h-4 w-4" /> },
   { to: '/deudores', label: 'Deudores', icon: <Wallet className="h-4 w-4" /> },
   { to: '/cerrar-caja', label: 'Cerrar caja', icon: <Coins className="h-4 w-4" /> },
