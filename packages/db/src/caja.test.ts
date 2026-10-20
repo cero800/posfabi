@@ -3,7 +3,7 @@ import type { DatabaseSync } from 'node:sqlite';
 
 import { qTodos } from './db.js';
 import { CODIGO_ERROR } from './errors.js';
-import { cajaAbierta, cerrarCaja, exigirCajaAbierta, obtenerCaja, abrirCaja as abrirTurno } from './caja.js';
+import { cajaAbierta, cerrarCaja, exigirCajaAbierta, obtenerCaja, obtenerCierre, abrirCaja as abrirTurno } from './caja.js';
 import { crearVenta } from './ventas.js';
 import { registrarAbono } from './pagos.js';
 import { abrirCaja as abrir, bd, cliente, clienteMostrador, producto, stock, tasa, usuario as crearUsuario } from './testutil.js';
@@ -316,14 +316,15 @@ describe('cerrar la caja', () => {
     expect(cierre.efectivo_esperado_ves).toBe(2000);
   });
 
-  it('guarda el cierre y ya no se puede volver a cerrar', () => {
+  it('guarda el cierre en revisión y ya no se puede volver a cerrar', () => {
     const { db, op, mostrador, a } = escenario();
     vender(db, a, 1, 100, op, mostrador);
 
     cerrarCaja(db, { caja_id: 1, operador_id: op, tasa_cierre: 10 });
 
     expect(cajaAbierta(db)).toBeNull();
-    expect(obtenerCaja(db, 1).estado).toBe('cerrada');
+    // El cierre queda en revisión hasta que abra la caja del día siguiente.
+    expect(obtenerCaja(db, 1).estado).toBe('revisada');
     expect(codigoDe(() => cerrarCaja(db, { caja_id: 1, operador_id: op, tasa_cierre: 10 }))).toBe(
       CODIGO_ERROR.caja_no_abierta,
     );
@@ -371,5 +372,56 @@ describe('cerrar la caja', () => {
     const { db, op } = escenario();
     cerrarCaja(db, { caja_id: 1, operador_id: op, tasa_cierre: 36.5 });
     expect(obtenerCaja(db, 1).tasa_cierre).toBe(36.5);
+  });
+});
+
+//---------------------------------------------------------------------------
+// Revisión y archivo
+//---------------------------------------------------------------------------
+
+describe('el cierre queda en revisión hasta el día siguiente', () => {
+  it('el cierre en revisión sigue bloqueando la venta', () => {
+    const { db, op, mostrador, a } = escenario();
+    vender(db, a, 1, 100, op, mostrador);
+    cerrarCaja(db, { caja_id: 1, operador_id: op, tasa_cierre: 10 });
+
+    // En revisión no es una caja abierta: el POS sigue bloqueado.
+    expect(cajaAbierta(db)).toBeNull();
+    expect(codigoDe(() => exigirCajaAbierta(db))).toBe(CODIGO_ERROR.caja_cerrada);
+  });
+
+  it('al abrir la caja del día siguiente, el cierre en revisión se archiva', () => {
+    const { db, op, mostrador, a } = escenario();
+    vender(db, a, 1, 100, op, mostrador);
+    cerrarCaja(db, { caja_id: 1, operador_id: op, tasa_cierre: 10 });
+    expect(obtenerCaja(db, 1).estado).toBe('revisada');
+
+    abrirTurno(db, { operador_id: op });
+
+    expect(obtenerCaja(db, 1).estado).toBe('cerrada');
+    expect(cajaAbierta(db)?.id).toBe(2);
+  });
+
+  it('la caja nueva hereda la gaveta del cierre en revisión', () => {
+    const { db, op, mostrador, a } = escenario();
+    vender(db, a, 1, 100, op, mostrador);
+    cerrarCaja(db, { caja_id: 1, operador_id: op, tasa_cierre: 10 });
+    const gaveta = obtenerCaja(db, 1).efectivo_final_usd;
+    expect(gaveta).toBeGreaterThan(0);
+
+    const nueva = abrirTurno(db, { operador_id: op });
+
+    expect(obtenerCaja(db, nueva).efectivo_inicial_usd).toBe(gaveta);
+  });
+
+  it('obtenerCierre reconstruye el comprobante de un cierre ya guardado', () => {
+    const { db, op, mostrador, a } = escenario();
+    vender(db, a, 2, 200, op, mostrador); // 2 cuadernos a 100 = 200 en efectivo
+
+    const enVivo = cerrarCaja(db, { caja_id: 1, operador_id: op, tasa_cierre: 36.5 });
+    abrirTurno(db, { operador_id: op }); // lo archiva
+
+    const reconstruido = obtenerCierre(db, 1);
+    expect(reconstruido).toEqual(enVivo);
   });
 });

@@ -257,7 +257,10 @@ CREATE TABLE IF NOT EXISTS usuarios (
     creado_en DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- estado: abierta | cerrada
+-- estado: abierta | revisada | cerrada
+-- «revisada» es el cierre recién firmado: bloquea la venta igual que «cerrada»
+-- pero no se archiva hasta que abre la caja del día siguiente, para poder
+-- reimprimir el comprobante durante la noche.
 -- Arqueo POR MONEDA: la caja controla efectivo US$ y Bs por separado.
 -- efectivo_esperado = inicial + ventas + abonos - egresos - devoluciones;
 -- diferencia = final - esperado. Todo calculado por moneda en cerrar_caja.

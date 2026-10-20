@@ -72,9 +72,14 @@ export function exigirCajaAbierta(db: DatabaseSync): number {
 /**
  * Abre la caja del turno.
  *
- * El efectivo inicial se hereda de la última caja cerrada: es el dinero que
- * quedó en la gaveta y el cajero vuelve a contarlo como base. El primer día
- * arranca en cero, porque no hay gaveta previa.
+ * Antes de abrir, confirma los cierres que quedaron en revisión: un cierre se
+ * firma al cerrar, pero no se archiva hasta que el día siguiente empieza, que
+ * es cuando ya no queda nada por corregir. Así el comprobante del cierre sigue
+ * a mano toda la noche y se vuelve definitivo al abrir la caja nueva.
+ *
+ * El efectivo inicial se hereda de la última caja cerrada o en revisión: es el
+ * dinero que quedó en la gaveta y el cajero vuelve a contarlo como base. El
+ * primer día arranca en cero, porque no hay gaveta previa.
  */
 export function abrirCaja(db: DatabaseSync, input: CajaAbrirInput): number {
   if (cajaAbierta(db) !== null) {
@@ -84,26 +89,34 @@ export function abrirCaja(db: DatabaseSync, input: CajaAbrirInput): number {
     );
   }
 
-  const previa = qUno<{ efectivo_final_usd: number; efectivo_final_ves: number }>(
-    db,
-    `SELECT efectivo_final_usd, efectivo_final_ves FROM cajas
-      WHERE estado = 'cerrada' ORDER BY id DESC LIMIT 1`,
-  );
-  const picoUsd = previa?.efectivo_final_usd ?? 0;
-  const picoVes = previa?.efectivo_final_ves ?? 0;
+  return transaccion(db, () => {
+    // El cierre de ayer se archiva ahora que hoy empieza.
+    ejecutar(
+      db,
+      "UPDATE cajas SET estado = 'cerrada' WHERE estado = 'revisada'",
+    );
 
-  return ejecutar(
-    db,
-    `INSERT INTO cajas (fecha, operador_id,
-                        efectivo_inicial_usd, efectivo_esperado_usd,
-                        efectivo_inicial_ves, efectivo_esperado_ves)
-     VALUES (${HOY_SQL}, ?, ?, ?, ?, ?)`,
-    input.operador_id,
-    picoUsd,
-    picoUsd,
-    picoVes,
-    picoVes,
-  ).ultimoId;
+    const previa = qUno<{ efectivo_final_usd: number; efectivo_final_ves: number }>(
+      db,
+      `SELECT efectivo_final_usd, efectivo_final_ves FROM cajas
+        WHERE estado = 'cerrada' ORDER BY id DESC LIMIT 1`,
+    );
+    const picoUsd = previa?.efectivo_final_usd ?? 0;
+    const picoVes = previa?.efectivo_final_ves ?? 0;
+
+    return ejecutar(
+      db,
+      `INSERT INTO cajas (fecha, operador_id,
+                          efectivo_inicial_usd, efectivo_esperado_usd,
+                          efectivo_inicial_ves, efectivo_esperado_ves)
+       VALUES (${HOY_SQL}, ?, ?, ?, ?, ?)`,
+      input.operador_id,
+      picoUsd,
+      picoUsd,
+      picoVes,
+      picoVes,
+    ).ultimoId;
+  });
 }
 
 /**
@@ -158,6 +171,12 @@ function desglosePagos(db: DatabaseSync, cajaId: number): CierreCajaPago[] {
 
 /**
  * Cierra la caja y devuelve el comprobante del día, listo para imprimir.
+ *
+ * El cierre NO es definitivo de inmediato: queda `revisada`. Sigue bloqueando
+ * el punto de venta como antes —solo se vende con la caja `abierta`—, pero el
+ * comprobante se puede reimprimir durante la noche y se archiva al abrir la
+ * caja del día siguiente. Es lo que pide la operación real: el arqueo se firma
+ * de noche y el papel queda a mano por si hay que volver a mirarlo.
  *
  * El efectivo real NO se digita: se reconcilia en persona, contando la gaveta
  * junto al cajero. Por eso al guardar se asume `efectivo_final = esperado` y
@@ -236,7 +255,7 @@ export function cerrarCaja(db: DatabaseSync, input: CajaCerrarInput): CierreDia 
             diferencia_usd        = 0,
             diferencia_ves        = 0,
             tasa_cierre           = ?,
-            estado                = 'cerrada'
+            estado                = 'revisada'
       WHERE id = ?`,
     ventasEfectivo.usd,
     ventasEfectivo.ves,
@@ -308,6 +327,84 @@ export function obtenerCaja(db: DatabaseSync, id: number): Caja {
     `SELECT ${COLUMNAS_CAJA} FROM cajas c JOIN usuarios u ON u.id = c.operador_id WHERE c.id = ?`,
     id,
   );
+}
+
+/**
+ * Reconstruye el comprobante de un cierre ya guardado, para reimprimirlo.
+ *
+ * El cierre recién hecho se devuelve tal cual desde `cerrarCaja`, que lo tiene
+ * todo en memoria. Este es para el que ya pasó: cuando el cierre quedó en
+ * revisión y la noche siguiente hay que volver a imprimir el papel, o cuando
+ * está archivado y alguien lo pide del historial.
+ *
+ * Se arma de la caja guardada (que tiene el efectivo y la tasa de cierre ya
+ * congelados) más el resumen de SU fecha. La tasa del comprobante es la
+ * `tasa_cierre` que quedó escrita, no la tasa de hoy: el papel tiene que salir
+ * como salió aquella noche.
+ */
+export function obtenerCierre(db: DatabaseSync, cajaId: number): CierreDia {
+  const caja = obtenerCaja(db, cajaId);
+  const fecha = caja.fecha.slice(0, 10);
+  const resumen = resumenDia(db, fecha);
+
+  const pagos = qTodos<CierreCajaPago>(
+    db,
+    `SELECT tipo_pago, moneda, monto FROM cierre_caja_pagos WHERE caja_id = ? ORDER BY tipo_pago, moneda`,
+    cajaId,
+  );
+
+  const abonos = qTodos<CierreAbono>(
+    db,
+    `SELECT p.cliente_id, c.nombre AS cliente, p.tipo_pago, p.moneda, p.monto,
+            p.tasa_cambio, p.fecha_pago
+       FROM pagos p JOIN clientes c ON c.id = p.cliente_id
+      WHERE p.venta_id IS NULL AND date(p.fecha_pago) = date(?)
+      ORDER BY p.id`,
+    fecha,
+  );
+
+  const negocio = datosNegocio(db);
+  const totalVentasUsd = resumen.ventas.reduce((s, v) => s + v.monto, 0);
+  const totalVentasBs = resumen.ventas.reduce((s, v) => s + redondearCent(v.monto * v.tasa_cambio), 0);
+  const totalDevolucionesUsd = resumen.devoluciones.reduce((s, d) => s + d.monto, 0);
+  const totalDevolucionesBs = redondearCent(totalDevolucionesUsd * caja.tasa_cierre);
+  const totalAbonosUsd = abonos.reduce(
+    (suma, a) => suma + (a.moneda === 'usd' ? a.monto : aUsd(a.monto, 'ves', a.tasa_cambio)),
+    0,
+  );
+  const totalAbonosBs = abonos.reduce(
+    (suma, a) => suma + (a.moneda === 'ves' ? a.monto : aVes(a.monto, 'usd', a.tasa_cambio)),
+    0,
+  );
+
+  return {
+    caja_id: caja.id,
+    fecha: caja.fecha,
+    operador_nombre: caja.operador_nombre,
+    negocio_nombre: negocio.nombre,
+    negocio_rif: negocio.rif,
+    negocio_telefono: negocio.telefono,
+    negocio_direccion: negocio.direccion,
+    efectivo_inicial_usd: caja.efectivo_inicial_usd,
+    efectivo_inicial_ves: caja.efectivo_inicial_ves,
+    efectivo_ventas_usd: caja.efectivo_ventas_usd,
+    efectivo_ventas_ves: caja.efectivo_ventas_ves,
+    abonos_efectivo_usd: caja.efectivo_esperado_usd - caja.efectivo_inicial_usd - caja.efectivo_ventas_usd,
+    abonos_efectivo_ves: caja.efectivo_esperado_ves - caja.efectivo_inicial_ves - caja.efectivo_ventas_ves,
+    efectivo_esperado_usd: caja.efectivo_esperado_usd,
+    efectivo_esperado_ves: caja.efectivo_esperado_ves,
+    pagos,
+    ventas: resumen.ventas,
+    abonos,
+    devoluciones: resumen.devoluciones,
+    total_ventas_usd: totalVentasUsd,
+    total_ventas_bs: totalVentasBs,
+    total_abonos_usd: totalAbonosUsd,
+    total_abonos_bs: totalAbonosBs,
+    total_devoluciones_usd: totalDevolucionesUsd,
+    total_devoluciones_bs: totalDevolucionesBs,
+    tasa_cierre: caja.tasa_cierre,
+  };
 }
 
 /** Tasa de cambio del día, expuesta para la pantalla de venta. */

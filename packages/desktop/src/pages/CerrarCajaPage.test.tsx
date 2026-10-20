@@ -2,13 +2,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { cerrarCaja, resumenDia } from '../services/db';
+import { cerrarCaja, listarCajas, obtenerCierre, resumenDia } from '../services/db';
 import { useSesion } from '../store/sesion';
 import CerrarCajaPage from './CerrarCajaPage';
 
 vi.mock('../services/db', () => ({
   cerrarCaja: vi.fn(),
   resumenDia: vi.fn(),
+  listarCajas: vi.fn(),
+  obtenerCierre: vi.fn(),
 }));
 
 const caja = {
@@ -89,6 +91,10 @@ beforeEach(() => {
   vi.mocked(cerrarCaja).mockResolvedValue(cierre as never);
   vi.mocked(resumenDia).mockReset();
   vi.mocked(resumenDia).mockResolvedValue(resumen as never);
+  vi.mocked(listarCajas).mockReset();
+  vi.mocked(listarCajas).mockResolvedValue([]);
+  vi.mocked(obtenerCierre).mockReset();
+  vi.mocked(obtenerCierre).mockResolvedValue(cierre as never);
   useSesion.setState({
     operador: { id: 1, nombre: 'Ana', rol: 'admin', activo: true },
     caja: caja as never,
@@ -164,5 +170,27 @@ describe('CerrarCajaPage', () => {
     expect(within(dialog).getByText(/Devoluciones del día \(perdido\)/)).toBeInTheDocument();
     expect(within(dialog).getByText('Ventas netas (ganado)')).toBeInTheDocument();
     expect(within(dialog).getAllByText(/^\$70\.00/).length).toBeGreaterThan(0);
+  });
+
+  it('lista los cierres anteriores con su estado y deja reimprimirlos', async () => {
+    const user = userEvent.setup();
+    vi.mocked(listarCajas).mockResolvedValue([
+      { ...caja, id: 7, estado: 'revisada', fecha: '2026-09-04' },
+      { ...caja, id: 6, estado: 'cerrada', fecha: '2026-09-03' },
+    ] as never);
+    renderPagina();
+
+    expect(await screen.findByText('Cierres anteriores')).toBeInTheDocument();
+    expect(screen.getByText('En revisión')).toBeInTheDocument();
+    expect(screen.getByText('Cerrada')).toBeInTheDocument();
+
+    // Reimprimir vuelve a armar el comprobante desde el backend.
+    await user.click(screen.getByRole('button', { name: /Ver cierre del 2026-09-03/ }));
+    expect(obtenerCierre).toHaveBeenCalledWith(6);
+    expect(await screen.findByRole('dialog', { name: /Cierre de caja/ })).toBeInTheDocument();
+
+    // Cerrar el modal de reimpresión no navega: se queda en la pantalla.
+    await user.click(within(screen.getByRole('dialog', { name: /Cierre de caja/ })).getByRole('button', { name: 'Cerrar' }));
+    expect(screen.queryByText('Inicio')).not.toBeInTheDocument();
   });
 });

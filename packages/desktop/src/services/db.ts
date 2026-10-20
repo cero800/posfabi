@@ -227,6 +227,8 @@ export const abrirCaja = (caja: CajaAbrirInput) => llamar<void>('abrir_caja', { 
 export const cerrarCaja = (caja: CajaCerrarInput) => llamar<CierreDia>('cerrar_caja', { caja });
 export const listarCajas = (limite?: number) => llamar<Caja[]>('listar_cajas', { limite: limite ?? null });
 export const obtenerCaja = (id: number) => llamar<Caja>('obtener_caja', { id });
+/** Comprobante de un cierre ya guardado, para reimprimirlo. */
+export const obtenerCierre = (cajaId: number) => llamar<CierreDia>('obtener_cierre', { cajaId });
 
 // ============================================================
 // Reporte y configuración

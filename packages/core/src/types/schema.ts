@@ -19,7 +19,7 @@ export const MONEDA_LABELS: Record<Moneda, string> = {
 export type TipoVenta = 'contado' | 'credito';
 export type TipoPago = 'efectivo' | 'pago_movil' | 'punto' | 'biopago';
 export type Rol = 'admin' | 'cajero';
-export type EstadoCaja = 'abierta' | 'cerrada';
+export type EstadoCaja = 'abierta' | 'revisada' | 'cerrada';
 export type EstadoVenta = 'entregada' | 'anulada';
 
 export type UnidadMedida =

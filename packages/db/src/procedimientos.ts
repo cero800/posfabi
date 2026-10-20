@@ -64,6 +64,7 @@ import {
   abrirCaja,
   listarCajas,
   obtenerCaja,
+  obtenerCierre,
 } from './caja.js';
 import { datosNegocio, escribirConfig, leerConfig } from './config.js';
 import { estadoCuenta, estadoCuentaTodos } from './deudores.js';
@@ -271,6 +272,7 @@ export const PROCEDIMIENTOS: Readonly<Record<string, Procedimiento>> = {
   cerrar_caja: ({ db }, a) => cerrarCaja(db, a.objeto<CajaCerrarInput>('caja')),
   listar_cajas: ({ db }, a) => listarCajas(db, a.enteroOpc('limite') ?? 60),
   obtener_caja: ({ db }, a) => obtenerCaja(db, a.entero('id')),
+  obtener_cierre: ({ db }, a) => obtenerCierre(db, a.entero('caja_id', 'cajaId', 'id')),
 
   //---------------------------------------------------------- reporte y config
   resumen_dia: ({ db }, a) => resumenDia(db, a.textoOpc('fecha')),

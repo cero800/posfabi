@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Coins } from 'lucide-react';
-import type { CierreDia, ResumenDia } from '@tienda/core';
+import { Coins, Printer } from 'lucide-react';
+import type { Caja, CierreDia, ResumenDia } from '@tienda/core';
 import { toVes } from '@tienda/core';
-import { cerrarCaja, resumenDia } from '../services/db';
+import { cerrarCaja, listarCajas, obtenerCierre, resumenDia } from '../services/db';
 import { useSesion } from '../store/sesion';
 import { formatUsdCents, formatVesCents } from '../lib/format';
 import { Card, CardHeader } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
+import { Table, THead, Th, Td } from '../components/ui/Table';
+import { Badge } from '../components/ui/Badge';
 import { CierreModal } from '../components/ui/CierreModal';
 
 export default function CerrarCajaPage() {
@@ -24,6 +26,11 @@ export default function CerrarCajaPage() {
   const [guardando, setGuardando] = useState(false);
   const [cierre, setCierre] = useState<CierreDia | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /** El id de la caja que se acaba de cerrar, para saber a dónde volver. */
+  const [cajaCerradaId, setCajaCerradaId] = useState<number | null>(null);
+
+  const [historial, setHistorial] = useState<Caja[]>([]);
+  const [reimprimiendo, setReimprimiendo] = useState<number | null>(null);
 
   useEffect(() => {
     if (caja) {
@@ -35,7 +42,13 @@ export default function CerrarCajaPage() {
     resumenDia()
       .then(setResumen)
       .catch(() => setResumen(null));
-  }, []);
+    // Los cierres anteriores: los que quedaron en revisión y los ya archivados.
+    // Si la consulta falla, la pantalla tiene que servir igual para cerrar el
+    // turno de hoy; la lista es un extra, no un requisito.
+    listarCajas()
+      .then((cs) => setHistorial(cs.filter((c) => c.estado !== 'abierta')))
+      .catch(() => setHistorial([]));
+  }, [cierre]);
 
   const tasaNum = parseFloat(tasaCierre.trim().replace(',', '.'));
   const tasaValida = tasaCierre.trim() !== '' && Number.isFinite(tasaNum) && tasaNum > 0;
@@ -53,6 +66,7 @@ export default function CerrarCajaPage() {
       });
       setCaja(null);
       setCierre(c);
+      setCajaCerradaId(c.caja_id);
       setConfirmar(false);
     } catch (e) {
       setError(String(e));
@@ -61,7 +75,27 @@ export default function CerrarCajaPage() {
     }
   };
 
-  const cerrarModal = () => navegar('/');
+  const verCierre = async (cajaId: number) => {
+    setReimprimiendo(cajaId);
+    try {
+      setCierre(await obtenerCierre(cajaId));
+    } catch (e) {
+      window.alert(`No se pudo abrir el cierre: ${String(e)}`);
+    } finally {
+      setReimprimiendo(null);
+    }
+  };
+
+  const cerrarModal = () => {
+    // Si venimos de cerrar el turno, la caja de la sesión ya es null y el
+    // guard de la ruta lleva a abrir la del día siguiente. Si solo estábamos
+    // reimprimiendo, no hay a dónde ir: quedarse en esta pantalla.
+    if (cierre?.caja_id === cajaCerradaId) {
+      navegar('/');
+      return;
+    }
+    setCierre(null);
+  };
 
   return (
     <div>
@@ -196,7 +230,8 @@ export default function CerrarCajaPage() {
               <div className="space-y-2">
                 <p className="text-center text-sm text-muted-foreground">
                   ¿Confirmas el cierre? Se bloquea el punto de venta hasta abrir una nueva
-                  caja. Tasa de cierre: <strong>{tasaCierre} Bs</strong>.
+                  caja. El comprobante queda en revisión y se archiva al abrir la caja del
+                  día siguiente. Tasa de cierre: <strong>{tasaCierre} Bs</strong>.
                 </p>
                 <div className="flex gap-2">
                   <Button variant="secondary" className="flex-1" onClick={() => setConfirmar(false)}>
@@ -211,6 +246,53 @@ export default function CerrarCajaPage() {
           </div>
         </Card>
       </div>
+
+      {historial.length > 0 && (
+        <div className="mx-auto mt-6 max-w-2xl">
+          <Card>
+            <CardHeader
+              title="Cierres anteriores"
+              subtitle="El comprobante queda en revisión hasta que abre la caja del día siguiente; después se archiva y sigue disponible aquí."
+            />
+            <Table>
+              <THead>
+                <tr>
+                  <Th>Fecha</Th>
+                  <Th>Operador</Th>
+                  <Th>Estado</Th>
+                  <Th className="text-right">Tasa</Th>
+                  <Th className="text-right">Comprobante</Th>
+                </tr>
+              </THead>
+              <tbody>
+                {historial.map((c) => (
+                  <tr key={c.id} className="border-b border-border last:border-0">
+                    <Td className="font-mono text-xs">{c.fecha.slice(0, 10)}</Td>
+                    <Td>{c.operador_nombre}</Td>
+                    <Td>
+                      <Badge tone={c.estado === 'revisada' ? 'amber' : 'gray'}>
+                        {c.estado === 'revisada' ? 'En revisión' : 'Cerrada'}
+                      </Badge>
+                    </Td>
+                    <Td className="text-right">{c.tasa_cierre > 0 ? c.tasa_cierre : '—'}</Td>
+                    <Td className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label={`Ver cierre del ${c.fecha.slice(0, 10)}`}
+                        disabled={reimprimiendo === c.id}
+                        onClick={() => verCierre(c.id)}
+                      >
+                        <Printer className="h-4 w-4" />
+                      </Button>
+                    </Td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          </Card>
+        </div>
+      )}
 
       <CierreModal cierre={cierre} onClose={cerrarModal} />
     </div>
