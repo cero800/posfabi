@@ -41,6 +41,7 @@ import type {
   DestinoImpresora,
   EntradaMercanciaInput,
   MermaInput,
+  MovimientoInventarioInput,
   PrecioClienteInput,
   ProductoInput,
   TicketInput,
@@ -108,6 +109,7 @@ import {
   registrarAjuste,
   registrarEntradaMercancia,
   registrarMerma,
+  registrarMovimientoInventario,
   setPrecioCliente,
   verificarPin,
   configurarAdmin,
@@ -220,6 +222,16 @@ export const PROCEDIMIENTOS: Readonly<Record<string, Procedimiento>> = {
   },
   registrar_ajuste: ({ db }, a) => {
     registrarAjuste(db, a.objeto<AjusteInput>('ajuste'));
+  },
+  /**
+   * Movimiento de inventario con motivo estructurado.
+   *
+   * Es el que usa la interfaz. `registrar_merma` y `registrar_ajuste` siguen
+   * existiendo para scripts y compatibilidad, pero el motivo de texto libre que
+   * arrastran es justo lo que este reemplaza.
+   */
+  registrar_movimiento_inventario: ({ db }, a) => {
+    registrarMovimientoInventario(db, a.objeto<MovimientoInventarioInput>('movimiento'));
   },
 
   //------------------------------------------------------------------ ventas

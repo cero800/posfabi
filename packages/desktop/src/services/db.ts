@@ -47,6 +47,7 @@ import type {
   EstadoCuenta,
   Factura,
   MermaInput,
+  MovimientoInventarioInput,
   PagoLinea,
   PrecioCliente,
   PrecioClienteInput,
@@ -180,6 +181,10 @@ export const registrarEntradaMercancia = (entrada: EntradaMercanciaInput) =>
 export const registrarMerma = (merma: MermaInput) => llamar<void>('registrar_merma', { merma });
 
 export const registrarAjuste = (ajuste: AjusteInput) => llamar<void>('registrar_ajuste', { ajuste });
+
+/** Movimiento de inventario con motivo estructurado; es el que usa la interfaz. */
+export const registrarMovimientoInventario = (movimiento: MovimientoInventarioInput) =>
+  llamar<void>('registrar_movimiento_inventario', { movimiento });
 
 // ============================================================
 // Ventas

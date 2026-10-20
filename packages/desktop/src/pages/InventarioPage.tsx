@@ -30,18 +30,24 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  ArrowLeftRight,
   Boxes,
   FolderTree,
-  MinusCircle,
   PackagePlus,
   Pencil,
   Plus,
   Search,
-  Settings2,
   Trash2,
 } from 'lucide-react';
-import type { Categoria, Producto, ProductoInput, StockItem, UnidadMedida } from '@tienda/core';
-import { UNIDADES_MEDIDA, UNIDAD_MEDIDA_LABELS } from '@tienda/core';
+import type {
+  Categoria,
+  MotivoMovimiento,
+  Producto,
+  ProductoInput,
+  StockItem,
+  UnidadMedida,
+} from '@tienda/core';
+import { MOTIVOS_MOVIMIENTO, UNIDADES_MEDIDA, UNIDAD_MEDIDA_LABELS } from '@tienda/core';
 import {
   actualizarProducto,
   crearProducto,
@@ -49,9 +55,8 @@ import {
   listarCategorias,
   listarProductos,
   listarStock,
-  registrarAjuste,
   registrarEntradaMercancia,
-  registrarMerma,
+  registrarMovimientoInventario,
 } from '../services/db';
 import { formatUsdCents, hoyIso, parseCentsInput } from '../lib/format';
 import { useSesion } from '../store/sesion';
@@ -68,7 +73,20 @@ import { DatePicker } from '../components/ui/DatePicker';
 
 const UNIDADES: readonly UnidadMedida[] = UNIDADES_MEDIDA;
 
-type Accion = 'entrada' | 'merma' | 'ajuste';
+/**
+ * El orden en que se ofrecen los motivos: primero las pérdidas —lo que más se
+ * usa— y al final los de conteo, que son la excepción.
+ */
+const ORDEN_MOTIVOS: readonly MotivoMovimiento[] = [
+  'roto',
+  'robado',
+  'vencido',
+  'devolucion_proveedor',
+  'error_conteo',
+  'otro',
+];
+
+type Accion = 'entrada' | 'movimiento';
 
 /** Una fila de la tabla: lo que hay que mostrar, ya cruzado y sin huecos. */
 interface Fila {
@@ -114,12 +132,13 @@ export default function InventarioPage() {
   const [errorForm, setErrorForm] = useState<string | null>(null);
   const [guardandoForm, setGuardandoForm] = useState(false);
 
-  // Movimientos de inventario (entrada, merma y ajuste).
+  // Movimientos de inventario (entrada y movimiento con motivo).
   const [accion, setAccion] = useState<Accion | null>(null);
   const [productoId, setProductoId] = useState('');
   const [cantidad, setCantidad] = useState('');
   const [costo, setCosto] = useState('');
-  const [motivo, setMotivo] = useState('');
+  const [motivoMov, setMotivoMov] = useState<MotivoMovimiento>('roto');
+  const [detalleMov, setDetalleMov] = useState('');
   const [fecha, setFecha] = useState(hoyIso());
   const [errorMov, setErrorMov] = useState<string | null>(null);
   const [guardandoMov, setGuardandoMov] = useState(false);
@@ -323,7 +342,8 @@ export default function InventarioPage() {
     setProductoId(productoIdDefault != null ? String(productoIdDefault) : '');
     setCantidad('');
     setCosto('');
-    setMotivo('');
+    setMotivoMov('roto');
+    setDetalleMov('');
     setFecha(hoyIso());
     setErrorMov(null);
     if (a === 'entrada' && productoIdDefault != null) {
@@ -340,18 +360,40 @@ export default function InventarioPage() {
     }
   };
 
+  /**
+   * El signo de los motivos de conteo lo elige quien registra: el sistema no
+   * puede saber si el estante tenía de más o de menos. Los de pérdida siempre
+   * restan, así que ahí la cantidad se pide en positivo y no se admite el menos.
+   */
+  const motivoActual = MOTIVOS_MOVIMIENTO[motivoMov];
+  const pideSigno = motivoActual.signo === 0;
+
   const ejecutarMovimiento = async () => {
     const pid = Number(productoId);
     const cant = Number(cantidad.replace(',', '.'));
-    const esAjuste = accion === 'ajuste';
-    if (!productoId || !Number.isFinite(cant) || (esAjuste ? cant === 0 : cant <= 0)) {
+    if (!productoId || !Number.isFinite(cant)) {
       setErrorMov('Selecciona el producto e ingresa una cantidad válida');
       return;
     }
-    if (accion === 'merma' && !motivo.trim()) {
-      setErrorMov('La merma requiere un motivo');
+    if (accion === 'movimiento') {
+      // Los motivos de pérdida exigen cantidad positiva; los de conteo, distinta de cero.
+      if (pideSigno ? cant === 0 : cant <= 0) {
+        setErrorMov(
+          pideSigno
+            ? 'Indica cuánto sumar o restar (no puede ser cero)'
+            : 'La cantidad debe ser mayor que cero',
+        );
+        return;
+      }
+      if (motivoMov === 'otro' && !detalleMov.trim()) {
+        setErrorMov('El motivo «Otro» requiere una explicación');
+        return;
+      }
+    } else if (cant <= 0) {
+      setErrorMov('La cantidad debe ser mayor que cero');
       return;
     }
+
     setGuardandoMov(true);
     setErrorMov(null);
     try {
@@ -363,13 +405,12 @@ export default function InventarioPage() {
           operador_id: operadorId,
           fecha,
         });
-      } else if (accion === 'merma') {
-        await registrarMerma({ producto_id: pid, cantidad: cant, motivo: motivo.trim(), operador_id: operadorId });
       } else {
-        await registrarAjuste({
+        await registrarMovimientoInventario({
           producto_id: pid,
-          cantidad_delta: cant,
-          motivo: motivo.trim() || 'Ajuste manual',
+          cantidad: cant,
+          motivo: motivoMov,
+          detalle: detalleMov.trim() || null,
           operador_id: operadorId,
         });
       }
@@ -392,14 +433,9 @@ export default function InventarioPage() {
         actions={
           <>
             {esAdmin && (
-              <>
-                <Button variant="secondary" onClick={() => abrirMovimiento('merma')}>
-                  <MinusCircle className="h-4 w-4" /> Merma
-                </Button>
-                <Button variant="secondary" onClick={() => abrirMovimiento('ajuste')}>
-                  <Settings2 className="h-4 w-4" /> Ajuste
-                </Button>
-              </>
+              <Button variant="secondary" onClick={() => abrirMovimiento('movimiento')}>
+                <ArrowLeftRight className="h-4 w-4" /> Movimiento
+              </Button>
             )}
             <Button variant="secondary" onClick={() => abrirMovimiento('entrada')}>
               <PackagePlus className="h-4 w-4" /> Recibir mercancía
@@ -672,12 +708,10 @@ export default function InventarioPage() {
         </div>
       </Modal>
 
-      {/* Recepción, merma y ajuste: suman o restan existencias dejando registro. */}
+      {/* Recepción y movimiento: suman o restan existencias dejando registro. */}
       <Modal
         open={accion != null}
-        title={
-          accion === 'entrada' ? 'Recibir mercancía' : accion === 'merma' ? 'Registrar merma' : 'Ajuste de inventario'
-        }
+        title={accion === 'entrada' ? 'Recibir mercancía' : 'Movimiento de inventario'}
         onClose={() => setAccion(null)}
         footer={
           <>
@@ -707,6 +741,20 @@ export default function InventarioPage() {
               ))}
           </Select>
 
+          {accion === 'movimiento' && (
+            <Select
+              label="Motivo *"
+              value={motivoMov}
+              onChange={(e) => setMotivoMov(e.target.value as MotivoMovimiento)}
+            >
+              {ORDEN_MOTIVOS.map((m) => (
+                <option key={m} value={m}>
+                  {MOTIVOS_MOVIMIENTO[m].etiqueta}
+                </option>
+              ))}
+            </Select>
+          )}
+
           <div className="flex gap-3">
             <div className="flex-1">
               <Input
@@ -714,7 +762,13 @@ export default function InventarioPage() {
                 value={cantidad}
                 onChange={(e) => setCantidad(e.target.value)}
                 placeholder="1.5"
-                hint={accion === 'ajuste' ? 'Negativo para restar' : undefined}
+                hint={
+                  accion === 'entrada'
+                    ? undefined
+                    : pideSigno
+                      ? 'Con signo: positivo suma, negativo resta'
+                      : 'Cuántas unidades salen (siempre en positivo)'
+                }
               />
             </div>
             {accion === 'entrada' && (
@@ -731,6 +785,10 @@ export default function InventarioPage() {
             )}
           </div>
 
+          {accion === 'movimiento' && (
+            <p className="text-xs text-muted-foreground">{motivoActual.ayuda}</p>
+          )}
+
           {accion === 'entrada' && (
             <div>
               <span className="mb-1 block text-sm font-medium text-foreground">Fecha</span>
@@ -738,12 +796,12 @@ export default function InventarioPage() {
             </div>
           )}
 
-          {accion !== 'entrada' && (
+          {accion === 'movimiento' && (
             <Input
-              label={accion === 'merma' ? 'Motivo *' : 'Motivo'}
-              value={motivo}
-              onChange={(e) => setMotivo(e.target.value)}
-              placeholder="Ej.: rotura de empaque"
+              label={motivoMov === 'otro' ? 'Explicación *' : 'Nota (opcional)'}
+              value={detalleMov}
+              onChange={(e) => setDetalleMov(e.target.value)}
+              placeholder={motivoMov === 'otro' ? 'Ej.: se prestaron para una feria' : 'Detalle adicional'}
             />
           )}
         </div>

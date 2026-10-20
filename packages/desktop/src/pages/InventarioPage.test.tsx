@@ -5,9 +5,8 @@ import {
   actualizarProducto,
   crearProducto,
   eliminarProducto,
-  registrarAjuste,
   registrarEntradaMercancia,
-  registrarMerma,
+  registrarMovimientoInventario,
 } from '../services/db';
 import { useSesion } from '../store/sesion';
 import InventarioPage from './InventarioPage';
@@ -60,8 +59,7 @@ vi.mock('../services/db', () => ({
   actualizarProducto: vi.fn(),
   eliminarProducto: vi.fn(),
   registrarEntradaMercancia: vi.fn(),
-  registrarMerma: vi.fn(),
-  registrarAjuste: vi.fn(),
+  registrarMovimientoInventario: vi.fn(),
 }));
 
 beforeEach(() => {
@@ -69,8 +67,7 @@ beforeEach(() => {
   vi.mocked(actualizarProducto).mockReset();
   vi.mocked(eliminarProducto).mockReset();
   vi.mocked(registrarEntradaMercancia).mockReset();
-  vi.mocked(registrarMerma).mockReset();
-  vi.mocked(registrarAjuste).mockReset();
+  vi.mocked(registrarMovimientoInventario).mockReset();
   vi.stubGlobal('confirm', vi.fn(() => true));
   useSesion.setState({ operador: { id: 1, nombre: 'Ana', rol: 'admin', activo: true } });
 });
@@ -329,39 +326,73 @@ describe('InventarioPage', () => {
     expect((within(dialog).getByLabelText(/Costo unitario/) as HTMLInputElement).value).toBe('5.00');
   });
 
-  it('exige motivo en la merma', async () => {
+  it('el movimiento de pérdida resta sin pedir el signo y asienta la etiqueta del motivo', async () => {
+    const user = userEvent.setup();
+    vi.mocked(registrarMovimientoInventario).mockResolvedValue(undefined as never);
+    render(<InventarioPage />);
+    await screen.findByText('Cuaderno Carta');
+
+    await user.click(screen.getByRole('button', { name: /Movimiento/ }));
+    const dialog = screen.getByRole('dialog');
+    await user.selectOptions(within(dialog).getByLabelText(/Producto/), '2');
+    await user.type(within(dialog).getByLabelText(/Cantidad/), '3');
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar' }));
+
+    expect(registrarMovimientoInventario).toHaveBeenCalledWith({
+      producto_id: 2,
+      cantidad: 3,
+      motivo: 'roto',
+      detalle: null,
+      operador_id: 1,
+    });
+  });
+
+  it('rechaza una cantidad negativa en un motivo de pérdida', async () => {
     const user = userEvent.setup();
     render(<InventarioPage />);
     await screen.findByText('Cuaderno Carta');
 
-    await user.click(screen.getByRole('button', { name: /Merma/ }));
+    await user.click(screen.getByRole('button', { name: /Movimiento/ }));
     const dialog = screen.getByRole('dialog');
     await user.selectOptions(within(dialog).getByLabelText(/Producto/), '2');
+    await user.type(within(dialog).getByLabelText(/Cantidad/), '-3');
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('mayor que cero');
+    expect(registrarMovimientoInventario).not.toHaveBeenCalled();
+  });
+
+  it('el error de conteo sí acepta signo negativo', async () => {
+    const user = userEvent.setup();
+    vi.mocked(registrarMovimientoInventario).mockResolvedValue(undefined as never);
+    render(<InventarioPage />);
+    await screen.findByText('Cuaderno Carta');
+
+    await user.click(screen.getByRole('button', { name: /Movimiento/ }));
+    const dialog = screen.getByRole('dialog');
+    await user.selectOptions(within(dialog).getByLabelText(/Producto/), '1');
+    await user.selectOptions(within(dialog).getByLabelText(/Motivo/), 'error_conteo');
+    await user.type(within(dialog).getByLabelText(/Cantidad/), '-4');
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar' }));
+
+    expect(registrarMovimientoInventario).toHaveBeenCalledWith(
+      expect.objectContaining({ producto_id: 1, cantidad: -4, motivo: 'error_conteo', operador_id: 1 }),
+    );
+  });
+
+  it('exige explicación cuando el motivo es «Otro»', async () => {
+    const user = userEvent.setup();
+    render(<InventarioPage />);
+    await screen.findByText('Cuaderno Carta');
+
+    await user.click(screen.getByRole('button', { name: /Movimiento/ }));
+    const dialog = screen.getByRole('dialog');
+    await user.selectOptions(within(dialog).getByLabelText(/Producto/), '1');
+    await user.selectOptions(within(dialog).getByLabelText(/Motivo/), 'otro');
     await user.type(within(dialog).getByLabelText(/Cantidad/), '1');
     await user.click(within(dialog).getByRole('button', { name: 'Guardar' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('motivo');
-    expect(registrarMerma).not.toHaveBeenCalled();
-  });
-
-  it('registra un ajuste con delta', async () => {
-    const user = userEvent.setup();
-    vi.mocked(registrarAjuste).mockResolvedValue(undefined as never);
-    render(<InventarioPage />);
-    await screen.findByText('Cuaderno Carta');
-
-    await user.click(screen.getByRole('button', { name: /Ajuste/ }));
-    const dialog = screen.getByRole('dialog');
-    await user.selectOptions(within(dialog).getByLabelText(/Producto/), '1');
-    await user.type(within(dialog).getByLabelText(/Cantidad/), '-2');
-    await user.type(within(dialog).getByLabelText(/Motivo/), 'Inventario físico');
-    await user.click(within(dialog).getByRole('button', { name: 'Guardar' }));
-
-    expect(registrarAjuste).toHaveBeenCalledWith({
-      producto_id: 1,
-      cantidad_delta: -2,
-      motivo: 'Inventario físico',
-      operador_id: 1,
-    });
+    expect(await screen.findByRole('alert')).toHaveTextContent('explicación');
+    expect(registrarMovimientoInventario).not.toHaveBeenCalled();
   });
 });

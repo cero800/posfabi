@@ -17,6 +17,8 @@ import type {
   ClienteInput,
   EntradaMercanciaInput,
   MermaInput,
+  MotivoMovimiento,
+  MovimientoInventarioInput,
   PrecioCliente,
   PrecioClienteInput,
   Producto,
@@ -27,6 +29,7 @@ import type {
   Usuario,
   UsuarioInput,
 } from '@tienda/core';
+import { MOTIVOS_MOVIMIENTO } from '@tienda/core';
 
 import { ejecutar, qObligatorio, qTodos, qUno, transaccion } from './db.js';
 import { noEncontrado, stockInsuficiente, validacion } from './errors.js';
@@ -778,6 +781,88 @@ export function registrarAjuste(db: DatabaseSync, input: AjusteInput): void {
       input.operador_id,
     );
   });
+}
+
+/**
+ * Movimiento de inventario con motivo estructurado.
+ *
+ * Es el reemplazo de `registrarMerma` + `registrarAjuste`, que se usaban casi
+ * indistintamente porque su `motivo` era texto libre que nadie leía nunca. Aquí
+ * el motivo elige el tipo de asiento y el signo:
+ *
+ *   - Los motivos de pérdida (roto, robado, vencido, devolución a proveedor)
+ *     se asientan como `merma` y restan. La cantidad se pide positiva y el
+ *     signo lo pone este código, para que nadie tenga que acordarse de teclear
+ *     el menos.
+ *   - `error_conteo` y `otro` se asientan como `ajuste` y aceptan un signo: el
+ *     conteo puede dar de más o de menos, y el sistema no puede adivinarlo.
+ *
+ * El detalle es obligatorio solo para `otro`, que es el cajón desastre: los
+ * demás ya dicen lo que pasó en su etiqueta.
+ */
+export function registrarMovimientoInventario(
+  db: DatabaseSync,
+  input: MovimientoInventarioInput,
+): void {
+  const info = motivosConocidos(input.motivo);
+  validarCantidadFirmada(input.cantidad);
+
+  const detalle = textoOpcional(input.detalle);
+  if (input.motivo === 'otro' && detalle === null) {
+    throw validacion('El motivo «Otro» requiere una explicación');
+  }
+
+  if (info.signo === 0) {
+    // Conteo: el signo lo trae la cantidad tal como se tecleó.
+    registrarAjuste(db, {
+      producto_id: input.producto_id,
+      cantidad_delta: input.cantidad,
+      motivo: detalle ?? info.etiqueta,
+      operador_id: input.operador_id,
+    });
+    return;
+  }
+
+  // Pérdida: la cantidad se pide positiva y el signo lo pone el motivo.
+  if (input.cantidad <= 0) {
+    throw validacion('La cantidad de una pérdida debe ser mayor que cero');
+  }
+  if (
+    qUno<{ id: number }>(db, 'SELECT id FROM productos WHERE id = ? AND activo = 1', input.producto_id) ===
+    null
+  ) {
+    throw noEncontrado('Producto');
+  }
+
+  aplicarMovimiento(
+    db,
+    {
+      producto_id: input.producto_id,
+      tipo: info.tipo,
+      cantidad: input.cantidad,
+      motivo: detalle ?? info.etiqueta,
+      venta_id: null,
+      operador_id: input.operador_id,
+      fecha: null,
+    },
+    info.signo < 0,
+  );
+}
+
+/** Un motivo conocido del catálogo, o error de validación si no lo es. */
+function motivosConocidos(motivo: string): { tipo: TipoMovimiento; signo: -1 | 0 | 1; etiqueta: string } {
+  const info = MOTIVOS_MOVIMIENTO[motivo as MotivoMovimiento];
+  if (info === undefined) {
+    throw validacion(`Motivo de movimiento desconocido: ${motivo}`);
+  }
+  return info;
+}
+
+/** La cantidad no puede ser cero, infinita ni absurda; el signo lo decide el motivo. */
+function validarCantidadFirmada(cantidad: number): void {
+  if (!Number.isFinite(cantidad) || cantidad === 0 || Math.abs(cantidad) > MAX_CANTIDAD) {
+    throw validacion('La cantidad del movimiento es inválida');
+  }
 }
 
 /** Descuenta stock por una venta. Se llama dentro de la transacción de venta. */

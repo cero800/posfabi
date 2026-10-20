@@ -243,6 +243,97 @@ export interface AjusteInput {
   operador_id: number;
 }
 
+//---------------------------------------------------------------------------
+// Motivos de movimiento de inventario
+//---------------------------------------------------------------------------
+
+/**
+ * Por qué se movió el stock. Es un código, no texto libre.
+ *
+ * Antes el motivo era una cadena que se guardaba y nadie leía nunca: no había
+ * forma de sacar «cuánto se perdió este mes» sin interpretar texto escrito a
+ * mano. Con un catálogo cerrado ese número por fin se puede sumar, que es para
+ * lo que sirve tener una merma separada de un ajuste.
+ */
+export type MotivoMovimiento =
+  | 'vendido'
+  | 'roto'
+  | 'robado'
+  | 'vencido'
+  | 'error_conteo'
+  | 'devolucion_proveedor'
+  | 'otro';
+
+/** Cómo afecta el motivo al stock. `signo` es una pista para la interfaz. */
+export interface MotivoMovimientoInfo {
+  etiqueta: string;
+  /** El tipo que se asienta en el libro de movimientos. */
+  tipo: TipoMovimiento;
+  /**
+   * `-1` si el motivo siempre resta, `1` si siempre suma, `0` si depende del
+   * conteo y lo elige quien lo registra.
+   */
+  signo: -1 | 0 | 1;
+  /** Descripción corta para la ayuda del formulario. */
+  ayuda: string;
+}
+
+export const MOTIVOS_MOVIMIENTO: Record<MotivoMovimiento, MotivoMovimientoInfo> = {
+  vendido: {
+    etiqueta: 'Vendido',
+    tipo: 'salida_venta',
+    signo: -1,
+    ayuda: 'Mercancía que salió por una venta',
+  },
+  roto: {
+    etiqueta: 'Roto o dañado',
+    tipo: 'merma',
+    signo: -1,
+    ayuda: 'Se rompió, se mojó o se dañó',
+  },
+  robado: {
+    etiqueta: 'Robado o perdido',
+    tipo: 'merma',
+    signo: -1,
+    ayuda: 'Desapareció sin explicación',
+  },
+  vencido: {
+    etiqueta: 'Vencido',
+    tipo: 'merma',
+    signo: -1,
+    ayuda: 'Pasó su fecha y ya no se puede vender',
+  },
+  error_conteo: {
+    etiqueta: 'Error de conteo',
+    tipo: 'ajuste',
+    signo: 0,
+    ayuda: 'El sistema decía una cosa y el estante otra',
+  },
+  devolucion_proveedor: {
+    etiqueta: 'Devolución a proveedor',
+    tipo: 'merma',
+    signo: -1,
+    ayuda: 'Se le devolvió la mercancía al proveedor',
+  },
+  otro: {
+    etiqueta: 'Otro',
+    tipo: 'ajuste',
+    signo: 0,
+    ayuda: 'Cualquier otro motivo; escribe cuál',
+  },
+};
+
+/** Entrada de un movimiento de inventario con motivo estructurado. */
+export interface MovimientoInventarioInput {
+  producto_id: number;
+  /** Siempre positivo: el signo lo pone el motivo. */
+  cantidad: number;
+  motivo: MotivoMovimiento;
+  /** Obligatorio solo para `otro`; el resto lo lleva en su etiqueta. */
+  detalle?: string | null;
+  operador_id: number;
+}
+
 export interface MovimientoInventario {
   id: number;
   producto_id: number;

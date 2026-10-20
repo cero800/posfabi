@@ -28,6 +28,7 @@ import {
   registrarAjuste,
   registrarEntradaMercancia,
   registrarMerma,
+  registrarMovimientoInventario,
   reponerStock,
   setPrecioCliente,
   verificarPin,
@@ -767,6 +768,143 @@ describe('ajuste por conteo físico', () => {
         CODIGO_ERROR.validacion,
       );
     }
+    expect(cantidadDisponible(db, id)).toBe(10);
+  });
+});
+
+//---------------------------------------------------------------------------
+// Movimiento con motivo estructurado
+//---------------------------------------------------------------------------
+
+describe('registrarMovimientoInventario', () => {
+  it('una pérdida resta y se asienta como merma, sin pedir el signo', () => {
+    const db = bd();
+    const id = productoConStock(db, 10);
+    registrarMovimientoInventario(db, {
+      producto_id: id,
+      cantidad: 3,
+      motivo: 'roto',
+      operador_id: 1,
+    });
+
+    expect(cantidadDisponible(db, id)).toBe(7);
+    expect(
+      qUno<{ tipo: string; cantidad: number; motivo: string }>(
+        db,
+        'SELECT tipo, cantidad, motivo FROM movimientos_inventario WHERE producto_id = ? ORDER BY id DESC',
+        id,
+      ),
+    ).toEqual({ tipo: 'merma', cantidad: -3, motivo: 'Roto o dañado' });
+  });
+
+  it('una devolución a proveedor también resta', () => {
+    const db = bd();
+    const id = productoConStock(db, 10);
+    registrarMovimientoInventario(db, {
+      producto_id: id,
+      cantidad: 4,
+      motivo: 'devolucion_proveedor',
+      operador_id: 1,
+    });
+    expect(cantidadDisponible(db, id)).toBe(6);
+  });
+
+  it('rechaza una pérdida con cantidad negativa: el signo lo pone el motivo', () => {
+    const db = bd();
+    const id = productoConStock(db, 10);
+    expect(
+      mensajeDe(() =>
+        registrarMovimientoInventario(db, { producto_id: id, cantidad: -3, motivo: 'roto', operador_id: 1 }),
+      ),
+    ).toBe('La cantidad de una pérdida debe ser mayor que cero');
+    expect(cantidadDisponible(db, id)).toBe(10);
+  });
+
+  it('el error de conteo respeta el signo que se le dé', () => {
+    const db = bd();
+    const id = productoConStock(db, 10);
+    registrarMovimientoInventario(db, {
+      producto_id: id,
+      cantidad: 5,
+      motivo: 'error_conteo',
+      operador_id: 1,
+    });
+    registrarMovimientoInventario(db, {
+      producto_id: id,
+      cantidad: -2,
+      motivo: 'error_conteo',
+      operador_id: 1,
+    });
+
+    expect(cantidadDisponible(db, id)).toBe(13);
+    expect(
+      qUno<{ tipo: string; cantidad: number }>(
+        db,
+        'SELECT tipo, cantidad FROM movimientos_inventario WHERE producto_id = ? ORDER BY id DESC',
+        id,
+      ),
+    ).toEqual({ tipo: 'ajuste', cantidad: -2 });
+  });
+
+  it('rechaza un movimiento de cero o fuera de rango', () => {
+    const db = bd();
+    const id = productoConStock(db, 10);
+    for (const cantidad of [0, 5_000_000, Number.NaN]) {
+      expect(
+        codigoDe(() =>
+          registrarMovimientoInventario(db, { producto_id: id, cantidad, motivo: 'roto', operador_id: 1 }),
+        ),
+      ).toBe(CODIGO_ERROR.validacion);
+    }
+    expect(cantidadDisponible(db, id)).toBe(10);
+  });
+
+  it('exige explicación cuando el motivo es «otro»', () => {
+    const db = bd();
+    const id = productoConStock(db, 10);
+    expect(
+      mensajeDe(() =>
+        registrarMovimientoInventario(db, {
+          producto_id: id,
+          cantidad: -1,
+          motivo: 'otro',
+          operador_id: 1,
+        }),
+      ),
+    ).toBe('El motivo «Otro» requiere una explicación');
+    registrarMovimientoInventario(db, {
+      producto_id: id,
+      cantidad: -1,
+      motivo: 'otro',
+      detalle: 'prestado para una feria',
+      operador_id: 1,
+    });
+    expect(cantidadDisponible(db, id)).toBe(9);
+  });
+
+  it('rechaza un motivo que no está en el catálogo', () => {
+    const db = bd();
+    const id = productoConStock(db, 10);
+    expect(
+      codigoDe(() =>
+        registrarMovimientoInventario(db, {
+          producto_id: id,
+          cantidad: 1,
+          motivo: 'inventado' as never,
+          operador_id: 1,
+        }),
+      ),
+    ).toBe(CODIGO_ERROR.validacion);
+  });
+
+  it('no deja el stock en negativo', () => {
+    const db = bd();
+    const id = productoConStock(db, 10);
+    expect(
+      codigoDe(() =>
+        registrarMovimientoInventario(db, { producto_id: id, cantidad: 99, motivo: 'robado', operador_id: 1 }),
+      ),
+    ).toBe(CODIGO_ERROR.stock_insuficiente);
     expect(cantidadDisponible(db, id)).toBe(10);
   });
 });
