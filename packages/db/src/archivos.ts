@@ -132,15 +132,20 @@ function guardarDocumento(
   const bytes = decodificarBase64(contenidoB64, etiqueta);
   const dir = path.join(rutas.documentDir, 'tienda', subcarpeta);
   const destino = path.join(dir, nombre);
-  const temporal = path.join(rutas.tempDir, `tienda-${process.pid}-${nombre}.parcial`);
+  // El temporal vive en la carpeta destino, no en `rutas.tempDir`. `rename` es
+  // atómico solo dentro del mismo sistema de archivos: si el temporal está en
+  // `/tmp` (otra partición, o `%TEMP%` en otro disco) el renombrado falla con
+  // `EXDEV: cross-device link not permitted` y la factura nunca se guarda. Con
+  // el temporal junto al destino el renombrado siempre es del mismo dispositivo.
+  const temporal = path.join(dir, `.${nombre}.${process.pid}.parcial`);
 
   try {
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(temporal, bytes);
     fs.renameSync(temporal, destino);
   } catch (e) {
-    // El temporal no se limpió: sin esto quedan archivos `.parcial` en `%TEMP%`
-    // de cada intento fallido, uno por cada factura que no se pudo guardar.
+    // El temporal no se limpió: sin esto queda un `.parcial` oculto junto a las
+    // facturas buenas, uno por cada factura que no se pudo guardar.
     try {
       fs.rmSync(temporal, { force: true });
     } catch {

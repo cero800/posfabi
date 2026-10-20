@@ -225,8 +225,8 @@ describe('cuando el disco no deja', () => {
   });
 
   it('limpia el temporal cuando la escritura falla', () => {
-    // El temporal vive en `%TEMP%`, no junto al destino. Un fallo de escritura
-    // lo dejaría ahí, y a la larga `%TEMP%` se llena de `.parcial` de facturas
+    // El temporal vive junto al destino, no en `%TEMP%`. Un fallo de escritura
+    // lo dejaría ahí, y a la larga la carpeta de facturas se llena de `.parcial`
     // que nadie sabe qué son.
     const rutas = rutasLimpias();
     fs.rmSync(rutas.documentDir, { recursive: true, force: true });
@@ -234,6 +234,9 @@ describe('cuando el disco no deja', () => {
 
     expect(() => guardarFacturaPdf('a.pdf', HOLA_B64, rutas)).toThrowError();
     expect(listado(rutas.tempDir)).toEqual([]);
+    // El temporal se escribe en `documentos/tienda/facturas`, que aquí no se
+    // pudo crear (el `documentDir` es un archivo), así que no queda nada atrás.
+    expect(listado(rutas.dataDir)).toEqual([]);
   });
 
   it('nombra el temporal con el pid, para que dos procesos no se pisen', () => {
@@ -247,5 +250,22 @@ describe('cuando el disco no deja', () => {
     expect(
       listado(path.join(rutas.documentDir, 'tienda', 'facturas')),
     ).toEqual(['factura-0001.pdf', 'factura-0002.pdf']);
+  });
+
+  it('no depende de `tempDir` para renombrar el temporal', () => {
+    // Regresión de `EXDEV: cross-device link not permitted`. El temporal se
+    // escribía en `tempDir` y se renombraba al destino; cuando ambos caen en
+    // sistemas de archivos distintos —`/tmp` y `/home` en Linux, o `%TEMP%` y
+    // Documentos en discos separados en Windows— `rename` falla y la factura
+    // nunca se guarda. Con `tempDir` apuntando a una ruta que ni existe, el
+    // guardado tiene que seguir funcionando: solo puede lograrlo si el temporal
+    // se crea junto al destino.
+    const { rutas, raiz } = rutasTemporales();
+    limpios.push(raiz);
+    mkdirsTmp(rutas);
+    rutas.tempDir = path.join(raiz, 'otro-disco-que-no-existe');
+
+    const ruta = guardarFacturaPdf('factura-0003.pdf', HOLA_B64, rutas);
+    expect(fs.readFileSync(ruta, 'utf8')).toBe('hello');
   });
 });
