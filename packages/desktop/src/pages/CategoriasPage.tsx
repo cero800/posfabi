@@ -16,16 +16,15 @@
 // en pantalla eso tiene que quedar dicho: el botón dice "Desactivar" y el
 // diálogo avisa qué pasa con los productos que todavía cuelgan de ahí.
 //
-// ## El árbol
+// ## Sin árbol en la interfaz
 //
-// `parent_id` permite anidar (Papelería > Útiles > Cuadernos) y el backend
-// impide mover una categoría dentro de una de sus subcategorías. El formulario
-// no ofrece los descendientes como padre, pero el backend lo vuelve a
-// comprobar: un cliente puede estar desactualizado, o un `parent_id` puede venir
-// de una base vieja. La defensa va en los dos lados y aquí solo se evita
-// ofrecer la opción que ya se sabe inválida.
+// La base y la API conservan `parent_id` (Papelería > Útiles > Cuadernos) y el
+// backend sigue impidiendo los ciclos, pero esta pantalla ya no lo ofrece: en la
+// práctica el catálogo de una tienda se agrupa en un nivel y la columna y el
+// desplegable «Dentro de» eran un segundo camino para lo mismo que ya hacen las
+// secciones de Venta. Toda categoría que se cree aquí queda de primer nivel.
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { FolderTree, Pencil, Plus, Trash2 } from 'lucide-react';
 import type { Categoria, CategoriaInput } from '@tienda/core';
 import {
@@ -37,7 +36,6 @@ import {
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
-import { Select } from '../components/ui/Select';
 import { Modal } from '../components/ui/Modal';
 import { Table, THead, Th, Td } from '../components/ui/Table';
 import { Badge } from '../components/ui/Badge';
@@ -47,11 +45,10 @@ import { PageLoader } from '../components/ui/Spinner';
 /** Lo que se escribe en el formulario, con los ids como texto. */
 interface Formulario {
   nombre: string;
-  parent_id: string;
   orden: string;
 }
 
-const VACIO: Formulario = { nombre: '', parent_id: '', orden: '0' };
+const VACIO: Formulario = { nombre: '', orden: '0' };
 
 export default function CategoriasPage() {
   const [categorias, setCategorias] = useState<Categoria[]>([]);
@@ -67,49 +64,6 @@ export default function CategoriasPage() {
     cargar();
   }, []);
 
-  /**
-   * Los descendientes de una categoría, para no ofrecerlos como padre.
-   *
-   * El subárbol se sube con `parent_id` en vez de con una consulta recursiva
-   * porque el backend devuelve una lista plana y sin hijos: `hijas` existe en el
-   * tipo pero `listarCategorias` no la llena. Con `parent_id` alcanza para saber
-   * si un padre es descendiente, y son dos niveles como los que tiene un catálogo
-   * de verdad.
-   */
-  const descendientesDe = useMemo(() => {
-    const porId = new Map(categorias.map((c) => [c.id, c]));
-    return (raiz: number): Set<number> => {
-      const abajo = new Set<number>();
-      for (const c of categorias) {
-        let padre = c.parent_id;
-        // Tope de 32 como el del backend: un ciclo grabado a mano en la base
-        // no puede dejar este `for` colgado.
-        for (let nivel = 0; nivel < 32 && padre != null; nivel += 1) {
-          if (padre === raiz) {
-            abajo.add(c.id);
-            break;
-          }
-          padre = porId.get(padre)?.parent_id ?? null;
-        }
-      }
-      return abajo;
-    };
-  }, [categorias]);
-
-  const padreDe = useMemo(() => {
-    const porId = new Map(categorias.map((c) => [c.id, c]));
-    return (c: Categoria): Categoria | null => {
-      let actual: number | null = c.parent_id;
-      for (let nivel = 0; nivel < 32 && actual != null; nivel += 1) {
-        const encontrado = porId.get(actual);
-        if (!encontrado) return null;
-        if (encontrado.parent_id == null) return encontrado;
-        actual = encontrado.parent_id;
-      }
-      return null;
-    };
-  }, [categorias]);
-
   const abrirNuevo = () => {
     setEditando(null);
     setForm(VACIO);
@@ -121,7 +75,6 @@ export default function CategoriasPage() {
     setEditando(c);
     setForm({
       nombre: c.nombre,
-      parent_id: c.parent_id == null ? '' : String(c.parent_id),
       orden: String(c.orden),
     });
     setError(null);
@@ -140,7 +93,10 @@ export default function CategoriasPage() {
     }
     const entrada: CategoriaInput = {
       nombre: form.nombre.trim(),
-      parent_id: form.parent_id === '' ? null : Number(form.parent_id),
+      // El árbol de categorías queda fuera de la interfaz: toda categoría es de
+      // primer nivel. `parent_id` se conserva en el tipo y en la base, se manda
+      // en `null` al crear y se respeta el que ya tuviera al editar.
+      parent_id: editando ? editando.parent_id : null,
       orden,
     };
     setGuardando(true);
@@ -181,10 +137,6 @@ export default function CategoriasPage() {
 
   if (cargando) return <PageLoader />;
 
-  // Los padres posibles: todos menos la categoría editada y sus descendientes.
-  const descendientes = editando ? descendientesDe(editando.id) : new Set<number>();
-  const padresPosibles = categorias.filter((c) => c.id !== editando?.id && !descendientes.has(c.id));
-
   return (
     <div>
       <PageHeader
@@ -210,45 +162,40 @@ export default function CategoriasPage() {
             <THead>
               <tr>
                 <Th>Nombre</Th>
-                <Th>Dentro de</Th>
                 <Th className="text-right">Orden</Th>
                 <Th className="text-right">Productos</Th>
                 <Th className="text-right">Acciones</Th>
               </tr>
             </THead>
             <tbody>
-              {categorias.map((c) => {
-                const padre = padreDe(c);
-                return (
-                  <tr key={c.id} className="border-b border-border last:border-0 hover:bg-muted/50">
-                    <Td className="font-medium text-foreground">{c.nombre}</Td>
-                    <Td className="text-muted-foreground">{padre?.nombre ?? '—'}</Td>
-                    <Td className="text-right">{c.orden}</Td>
-                    <Td className="text-right">
-                      {(c.productos ?? 0) > 0 ? (
-                        <Badge tone="blue">{c.productos}</Badge>
-                      ) : (
-                        <span className="text-muted-foreground">0</span>
-                      )}
-                    </Td>
-                    <Td className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="sm" aria-label={`Editar ${c.nombre}`} onClick={() => abrirEdicion(c)}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          aria-label={`Desactivar ${c.nombre}`}
-                          onClick={() => desactivar(c)}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </Td>
-                  </tr>
-                );
-              })}
+              {categorias.map((c) => (
+                <tr key={c.id} className="border-b border-border last:border-0 hover:bg-muted/50">
+                  <Td className="font-medium text-foreground">{c.nombre}</Td>
+                  <Td className="text-right">{c.orden}</Td>
+                  <Td className="text-right">
+                    {(c.productos ?? 0) > 0 ? (
+                      <Badge tone="blue">{c.productos}</Badge>
+                    ) : (
+                      <span className="text-muted-foreground">0</span>
+                    )}
+                  </Td>
+                  <Td className="text-right">
+                    <div className="flex justify-end gap-1">
+                      <Button variant="ghost" size="sm" aria-label={`Editar ${c.nombre}`} onClick={() => abrirEdicion(c)}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label={`Desactivar ${c.nombre}`}
+                        onClick={() => desactivar(c)}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </Td>
+                </tr>
+              ))}
             </tbody>
           </Table>
         </Card>
@@ -281,19 +228,6 @@ export default function CategoriasPage() {
             onChange={(e) => setForm({ ...form, nombre: e.target.value })}
             placeholder="Cuadernos"
           />
-          <Select
-            label="Dentro de"
-            value={form.parent_id}
-            onChange={(e) => setForm({ ...form, parent_id: e.target.value })}
-            hint="Déjalo en «— Ninguna —» para que sea una categoría de primer nivel"
-          >
-            <option value="">— Ninguna —</option>
-            {padresPosibles.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.nombre}
-              </option>
-            ))}
-          </Select>
           <Input
             label="Orden"
             type="number"

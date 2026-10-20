@@ -5,10 +5,11 @@ import { actualizarCategoria, crearCategoria, eliminarCategoria, listarCategoria
 import CategoriasPage from './CategoriasPage';
 
 /**
- * Un árbol de tres niveles: Papelería > Útiles > Cuadernos, más una categoría
- * suelta. Es lo justo para comprobar que la página calcula el padre que se
- * muestra (subiendo más de un nivel) y que al editar no ofrece los
- * descendientes como padre.
+ * Cuatro categorías, dos activas y una desactivada.
+ *
+ * `parent_id` sigue en los datos —la base y la API lo conservan— aunque la
+ * pantalla ya no lo muestre ni lo edite: así las pruebas cubren que una base
+ * con categorías anidadas de antes se lista sin romperse.
  */
 const ARBOL = [
   { id: 1, nombre: 'Papelería', parent_id: null, orden: 0, activo: true, productos: 4 },
@@ -30,11 +31,10 @@ vi.mock('../services/db', () => ({
 /**
  * La fila donde está la categoría, esperando a que la lista cargue.
  *
- * Busca por la primera celda y no con `getByText` a secas: el nombre de una
- * categoría aparece también en la columna "Dentro de" de sus hijas, así que
- * "Papelería" está en tres filas y un `getByText` de página entera daría
- * "elementos múltiples" —o, peor, encontraría la celda de una hija y la prueba
- * pasaría creyendo que miró la fila de la madre.
+ * Busca por la primera celda y no con `getByText` a secas: los nombres se
+ * repiten entre filas y un `getByText` de página entera daría "elementos
+ * múltiples" —o, peor, encontraría la celda equivocada y la prueba pasaría
+ * creyendo que miró la fila correcta.
  */
 async function filaDe(nombre: string): Promise<HTMLElement> {
   return waitFor(() => {
@@ -47,8 +47,8 @@ async function filaDe(nombre: string): Promise<HTMLElement> {
 }
 
 /**
- * El texto de una celda por número de columna: 0 nombre, 1 dentro de, 2 orden,
- * 3 productos, 4 acciones.
+ * El texto de una celda por número de columna: 0 nombre, 1 orden, 2 productos,
+ * 3 acciones.
  *
  * Hace falta porque orden y número de productos son las dos columnas de números
  * y se repiten entre filas: en la fila de "Cuadernos" hay dos "1", el orden y
@@ -81,24 +81,21 @@ describe('CategoriasPage', () => {
     vi.stubGlobal('alert', vi.fn());
   });
 
-  it('lista el árbol mostrando el padre de primer nivel, el orden y los productos', async () => {
+  it('lista las categorías con el orden y los productos', async () => {
     render(<CategoriasPage />);
-
-    // "Cuadernos" cuelga de "Útiles", que a su vez cuelga de "Papelería": la
-    // columna "Dentro de" muestra la raíz, no el padre inmediato, porque si no
-    // el cajero de un catálogo anidado no sabe dónde está la cosa.
-    expect(within(await filaDe('Cuadernos')).getByText('Papelería')).toBeInTheDocument();
-    expect(within(await filaDe('Útiles')).getByText('Papelería')).toBeInTheDocument();
-
-    // Una categoría de primer nivel no tiene padre: guion, no texto vacío.
-    expect(within(await filaDe('Papelería')).getByText('—')).toBeInTheDocument();
 
     // Orden y número de productos, cada uno en su columna.
     const cuadernos = await filaDe('Cuadernos');
-    expect(celda(cuadernos, 2)).toBe('1'); // orden
-    expect(celda(cuadernos, 3)).toBe('1'); // productos
-    expect(celda(await filaDe('Pizarra'), 2)).toBe('2'); // orden, sin productos
-    expect(celda(await filaDe('Pizarra'), 3)).toBe('0');
+    expect(celda(cuadernos, 1)).toBe('1'); // orden
+    expect(celda(cuadernos, 2)).toBe('1'); // productos
+    expect(celda(await filaDe('Pizarra'), 1)).toBe('2'); // orden, sin productos
+    expect(celda(await filaDe('Pizarra'), 2)).toBe('0');
+  });
+
+  it('no muestra la columna de árbol: el alta ya no pregunta «Dentro de»', async () => {
+    render(<CategoriasPage />);
+    await filaDe('Papelería');
+    expect(screen.queryByText('Dentro de')).not.toBeInTheDocument();
   });
 
   it('avisa cuando no hay ninguna categoría', async () => {
@@ -107,7 +104,7 @@ describe('CategoriasPage', () => {
     expect(await screen.findByText(/Sin categorías/)).toBeInTheDocument();
   });
 
-  it('crea una categoría nueva mandando solo lo que se escribió', async () => {
+  it('crea una categoría nueva de primer nivel con solo nombre y orden', async () => {
     const user = userEvent.setup();
     render(<CategoriasPage />);
     await filaDe('Papelería');
@@ -115,14 +112,13 @@ describe('CategoriasPage', () => {
     await user.click(screen.getByRole('button', { name: /Nueva categoría/ }));
     const dialog = screen.getByRole('dialog');
     await user.type(within(dialog).getByLabelText(/Nombre/), 'Marcadores');
-    await user.selectOptions(within(dialog).getByLabelText(/Dentro de/), '1');
     await user.clear(within(dialog).getByLabelText(/Orden/));
     await user.type(within(dialog).getByLabelText(/Orden/), '5');
     await user.click(within(dialog).getByRole('button', { name: 'Guardar' }));
 
     expect(crearCategoria).toHaveBeenCalledWith({
       nombre: 'Marcadores',
-      parent_id: 1,
+      parent_id: null,
       orden: 5,
     });
   });
@@ -150,9 +146,11 @@ describe('CategoriasPage', () => {
   /**
    * `actualizar_categoria` reescribe la fila entera, `parent_id` y `orden`
    * incluidos. Si el formulario mandara un parche, renombrar una categoría la
-   * dejaría colgada de la raíz y con orden cero. Por eso va el objeto completo.
+   * dejaría sin padre y con orden cero. Por eso va el objeto completo: aquí se
+   * comprueba que el `parent_id` que ya tenía se conserva tal cual, sin que la
+   * pantalla lo toque.
    */
-  it('al editar manda la categoría entera, con su activo y su orden', async () => {
+  it('al editar manda la categoría entera, conservando su parent_id y su activo', async () => {
     render(<CategoriasPage />);
     const dialog = await abrirEditor('Cuadernos');
     const user = userEvent.setup();
@@ -169,33 +167,12 @@ describe('CategoriasPage', () => {
     });
   });
 
-  it('al editar trae el padre y el orden que ya tenía', async () => {
+  it('al editar trae el nombre y el orden que ya tenía', async () => {
     render(<CategoriasPage />);
     const dialog = await abrirEditor('Cuadernos');
     expect(within(dialog).getByLabelText(/Nombre/)).toHaveValue('Cuadernos');
-    expect(within(dialog).getByLabelText(/Dentro de/)).toHaveValue('2');
     // El input de orden es `type="number"`, así que su valor es número.
     expect(within(dialog).getByLabelText(/Orden/)).toHaveValue(1);
-  });
-
-  it('no ofrece como padre la categoría misma ni sus descendientes', async () => {
-    render(<CategoriasPage />);
-    // Editando "Papelería" (1): ella misma y todo lo que cuelga de abajo —"Útiles"
-    // (2) y "Cuadernos" (3)— quedarían en ciclo. Solo se ofrece "Pizarra" (4),
-    // que no tiene nada que ver.
-    const dialog = await abrirEditor('Papelería');
-    const select = within(dialog).getByLabelText(/Dentro de/) as HTMLSelectElement;
-    expect(Array.from(select.options).map((o) => o.value)).toEqual(['', '4']);
-  });
-
-  it('al editar una hoja sí se ofrecen sus parientes y las raíces', async () => {
-    render(<CategoriasPage />);
-    // "Cuadernos" (3) no tiene descendientes, así que puede mudarse a cualquier
-    // otro sitio menos a sí misma: "Papelería" y "Pizarra" siguen valiendo, y
-    // quedarse donde está también.
-    const dialog = await abrirEditor('Cuadernos');
-    const select = within(dialog).getByLabelText(/Dentro de/) as HTMLSelectElement;
-    expect(Array.from(select.options).map((o) => o.value)).toEqual(['', '1', '2', '4']);
   });
 
   /**
