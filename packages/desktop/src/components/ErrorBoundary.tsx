@@ -27,7 +27,7 @@ export default class ErrorBoundary extends Component<Props, State> {
     const texto = `${this.state.error.message}\n${this.state.error.stack ?? ''}`;
     return (
       <div className="flex min-h-screen items-center justify-center bg-muted p-6">
-        <div className="w-full max-w-lg rounded-2xl border border-destructive/30 bg-card p-6 shadow-sm">
+        <div className="w-full max-w-lg rounded-card border border-destructive/30 bg-card p-6 shadow-card">
           <h1 className="text-lg font-bold text-destructive">Algo salió mal</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Se produjo un error de interfaz. Este mensaje reemplaza la pantalla en blanco para que

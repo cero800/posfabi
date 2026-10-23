@@ -13,7 +13,7 @@ export default function OverlayErrores() {
   return (
     <div className="pointer-events-none fixed bottom-3 right-3 z-50 flex flex-col items-end gap-2">
       {abierto && (
-        <div className="pointer-events-auto w-80 max-h-72 overflow-auto rounded-xl border border-destructive/30 bg-card p-3 shadow-lg">
+        <div className="pointer-events-auto w-80 max-h-72 overflow-auto rounded-card border border-destructive/30 bg-card p-3 shadow-pop">
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold text-destructive">{errores.length} error(es)</p>
             <div className="flex gap-1">
@@ -46,7 +46,7 @@ export default function OverlayErrores() {
       )}
       <button
         type="button"
-        className="pointer-events-auto flex items-center gap-1.5 rounded-full bg-destructive px-3 py-1.5 text-xs font-semibold text-destructive-foreground shadow hover:bg-destructive/90"
+        className="pointer-events-auto flex items-center gap-1.5 rounded-full bg-destructive px-3 py-1.5 text-xs font-semibold text-destructive-foreground shadow-card hover:bg-destructive/90"
         onClick={() => setAbierto(!abierto)}
       >
         <AlertTriangle className="h-3.5 w-3.5" />

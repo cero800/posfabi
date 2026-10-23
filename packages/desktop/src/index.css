@@ -30,6 +30,14 @@
    --------------------------------------------------------------------------- */
 
 :root {
+  /* Le dice al motor qué pinta sus widgets NATIVOS: la lista desplegada de un
+     `<select>`, la barra de scroll, el popup de un `<input type=date>` y el
+     fondo que el navegador pone al autocompletar. Esos no los alcanza ninguna
+     clase de Tailwind, y sin esta línea WebKitGTK los pinta en claro aunque el
+     resto de la app esté en oscuro: son los rectángulos blancos que aparecían
+     al cambiar de tema. */
+  color-scheme: light;
+
   --background: 0 0% 100%;
   --foreground: 222 47% 11%;
 
@@ -69,6 +77,10 @@
 }
 
 .dark {
+  /* En oscuro el motor pinta oscuros sus widgets nativos (ver `color-scheme` en
+     `:root`). Es la mitad que no se puede hacer con clases. */
+  color-scheme: dark;
+
   --background: 222 47% 11%;
   --foreground: 210 40% 98%;
 
@@ -109,6 +121,15 @@
    con el fondo claro, que es un rectángulo blanco en medio de la pantalla. */
 * {
   scrollbar-color: hsl(var(--border)) transparent;
+}
+
+/* Las opciones de un `<select>` no heredan el fondo del control: la lista la
+   dibuja el sistema por su cuenta. `color-scheme` ya la oscurece, pero en
+   WebKitGTK no siempre basta, así que se colorean a mano con los tokens del
+   popover para que el desplegable combine con el resto en los dos modos. */
+option {
+  background-color: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
 }
 
 /* ---------------------------------------------------------------------------

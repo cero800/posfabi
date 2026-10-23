@@ -104,7 +104,7 @@ export default function PrecioEspecialModal({
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
             placeholder="Buscar producto por nombre o código…"
-            className="w-full rounded-lg border border-border bg-background py-2 pl-9 pr-3 text-sm shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/40 focus:outline-none"
+            className="w-full rounded-lg border border-border bg-background py-2 pl-9 pr-3 text-sm shadow-card focus:border-primary focus:ring-2 focus:ring-primary/40 focus:outline-none"
           />
         </div>
 

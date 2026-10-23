@@ -139,12 +139,12 @@ export function FacturaModal({ factura, onClose }: Props) {
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden="true" />
+      <div className="absolute inset-0 bg-black/40 dark:bg-black/70" onClick={onClose} aria-hidden="true" />
       <div
         role="dialog"
         aria-modal="true"
         aria-label={`Factura ${factura.numero_factura}`}
-        className="relative flex max-h-[90vh] w-full max-w-2xl flex-col rounded-xl bg-popover shadow-xl"
+        className="relative flex max-h-[90vh] w-full max-w-2xl flex-col rounded-card bg-popover text-popover-foreground shadow-pop"
       >
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-border px-5 py-3">
           <div className="min-w-0">
