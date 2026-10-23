@@ -32,7 +32,8 @@ import type {
 import { MOTIVOS_MOVIMIENTO } from '@tienda/core';
 
 import { ejecutar, qObligatorio, qTodos, qUno, transaccion } from './db.js';
-import { noEncontrado, stockInsuficiente, validacion } from './errors.js';
+import { AppError, CODIGO_ERROR, noEncontrado, stockInsuficiente, validacion } from './errors.js';
+import { esHashAlmacenado, hashearPin, verificarHash } from './seguridad.js';
 import {
   MAX_CANTIDAD,
   normalizarClave,
@@ -949,23 +950,83 @@ export function crearUsuario(db: DatabaseSync, input: UsuarioInput): number {
     nombre,
     input.rol,
     input.activo === false ? 0 : 1,
-    pin.trim(),
+    hashearPin(pin),
   ).ultimoId;
+}
+
+function bloquearHasta(segundos: number): string {
+  // datetime('now','localtime') es el criterio usado en toda la app.
+  const d = new Date(Date.now() + segundos * 1000);
+  // Formato compatible con SQLite datetime.
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 
 /**
  * Comprueba el PIN de un usuario activo. Devuelve `false` en vez de fallar
  * cuando el PIN no coincide, porque "ese PIN no es" es un resultado normal del
- * login; sí falla si el usuario no existe o está desactivado.
+ * login; sí falla si el usuario no existe, está desactivado o está bloqueado.
+ *
+ * Los PIN en claro se migran perezosamente al primer acierto; los fallos
+ * incrementan el contador y aplican bloqueo escalonado (5 fallos → 60 s,
+ * 10 fallos → 5 min).
  */
 export function verificarPin(db: DatabaseSync, usuarioId: number, pin: string): boolean {
-  const fila = qUno<{ pin: string | null }>(
+  const fila = qUno<{ pin: string | null; intentos_fallidos: number | null; bloqueado_hasta: string | null }>(
     db,
-    'SELECT pin FROM usuarios WHERE id = ? AND activo = 1',
+    `SELECT pin,
+            COALESCE(intentos_fallidos, 0) AS intentos_fallidos,
+            bloqueado_hasta
+       FROM usuarios WHERE id = ? AND activo = 1`,
     usuarioId,
   );
   if (fila === null) throw noEncontrado('Usuario');
-  return (fila.pin ?? '').trim() === pin.trim();
+
+  const bloqueadoHasta = fila.bloqueado_hasta;
+  if (bloqueadoHasta) {
+    // Comparación lexicográfica funciona con YYYY-MM-DD HH:MM:SS
+    const ahora = qObligatorio<{ ahora: string }>(db, 'Fecha', "SELECT datetime('now','localtime') AS ahora").ahora;
+    if (bloqueadoHasta > ahora) {
+      throw new AppError(CODIGO_ERROR.pin_incorrecto, `Operador bloqueado hasta ${bloqueadoHasta}`);
+    }
+    // Bloqueo expirado: limpiar para dar una nueva oportunidad limpia.
+    ejecutar(db, 'UPDATE usuarios SET intentos_fallidos = 0, bloqueado_hasta = NULL WHERE id = ?', usuarioId);
+  }
+
+  const almacenado = fila.pin ?? '';
+  const ok = verificarHash(pin, almacenado);
+
+  if (!ok) {
+    const intentos = Number(fila.intentos_fallidos ?? 0) + 1;
+    if (intentos >= 10) {
+      ejecutar(
+        db,
+        'UPDATE usuarios SET intentos_fallidos = ?, bloqueado_hasta = ? WHERE id = ?',
+        intentos,
+        bloquearHasta(300),
+        usuarioId,
+      );
+    } else if (intentos >= 5) {
+      ejecutar(
+        db,
+        'UPDATE usuarios SET intentos_fallidos = ?, bloqueado_hasta = ? WHERE id = ?',
+        intentos,
+        bloquearHasta(60),
+        usuarioId,
+      );
+    } else {
+      ejecutar(db, 'UPDATE usuarios SET intentos_fallidos = ? WHERE id = ?', intentos, usuarioId);
+    }
+    return false;
+  }
+
+  // Éxito: migrar si estaba en claro y resetear contador.
+  if (!esHashAlmacenado(almacenado)) {
+    ejecutar(db, 'UPDATE usuarios SET pin = ?, intentos_fallidos = 0, bloqueado_hasta = NULL WHERE id = ?', hashearPin(pin), usuarioId);
+  } else {
+    ejecutar(db, 'UPDATE usuarios SET intentos_fallidos = 0, bloqueado_hasta = NULL WHERE id = ?', usuarioId);
+  }
+  return true;
 }
 
 export function cambiarPin(db: DatabaseSync, usuarioId: number, pinActual: string, pinNuevo: string): void {
@@ -976,7 +1037,7 @@ export function cambiarPin(db: DatabaseSync, usuarioId: number, pinActual: strin
   ejecutar(
     db,
     'UPDATE usuarios SET pin = ? WHERE id = ?',
-    pinNuevo.trim(),
+    hashearPin(pinNuevo),
     usuarioId,
   );
 }
@@ -994,7 +1055,7 @@ export function configurarAdmin(db: DatabaseSync, nombre: string, pin: string): 
     db,
     `UPDATE usuarios SET nombre = ?, pin = ?, activo = 1 WHERE rol = 'admin'`,
     n,
-    pin.trim(),
+    hashearPin(pin),
   ).cambios;
 
   if (actualizados === 0) {
@@ -1002,7 +1063,7 @@ export function configurarAdmin(db: DatabaseSync, nombre: string, pin: string): 
       db,
       "INSERT INTO usuarios (nombre, rol, activo, pin) VALUES (?, 'admin', 1, ?)",
       n,
-      pin.trim(),
+      hashearPin(pin),
     );
   }
 }

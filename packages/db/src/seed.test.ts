@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { enMemoria, qUno } from './db.js';
+import { verificarPin } from './repo.js';
 import {
   DOCUMENTO_MOSTRADOR,
   PIN_ADMIN_POR_DEFECTO,
@@ -14,14 +15,18 @@ const contar = (db: ReturnType<typeof enMemoria>, tabla: string): number =>
   qUno<{ n: number }>(db, `SELECT COUNT(*) AS n FROM ${tabla}`)!.n;
 
 describe('sembrarAdmin', () => {
-  it('crea el administrador con el PIN por defecto en una base vacía', () => {
+  it('crea el administrador con el PIN por defecto hasheado en una base vacía', () => {
     const db = enMemoria();
     sembrarAdmin(db);
-    const u = qUno<{ nombre: string; rol: string; pin: string }>(
+    const u = qUno<{ id: number; nombre: string; rol: string; pin: string }>(
       db,
-      'SELECT nombre, rol, pin FROM usuarios',
+      'SELECT id, nombre, rol, pin FROM usuarios',
     );
-    expect(u).toEqual({ nombre: 'Administrador', rol: 'admin', pin: PIN_ADMIN_POR_DEFECTO });
+    expect(u).toMatchObject({ nombre: 'Administrador', rol: 'admin' });
+    // El PIN no queda en claro, pero se puede verificar.
+    expect(u!.pin).not.toBe(PIN_ADMIN_POR_DEFECTO);
+    expect(u!.pin.startsWith('scrypt$')).toBe(true);
+    expect(verificarPin(db, u!.id, PIN_ADMIN_POR_DEFECTO)).toBe(true);
   });
 
   it('no duplica si ya hay usuarios', () => {

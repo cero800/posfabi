@@ -7,6 +7,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 
 import { qUno } from './db.js';
+import { hashearPin } from './seguridad.js';
 
 /** Administrador inicial, con PIN por defecto. */
 export const PIN_ADMIN_POR_DEFECTO = '1234';
@@ -21,10 +22,13 @@ export const DOCUMENTO_MOSTRADOR = '0';
 export function sembrarAdmin(db: DatabaseSync): void {
   const { total } = qObligatorioCont(db, 'usuarios');
   if (total > 0) return;
+  // El PIN se guarda hasheado desde el primer arranque. La semilla no es una
+  // excepción: un PIN por defecto en claro en una base nueva sería el mismo
+  // agujero que el hash viene a cerrar.
   db.prepare('INSERT INTO usuarios (nombre, rol, pin) VALUES (?, ?, ?)').run(
     'Administrador',
     'admin',
-    PIN_ADMIN_POR_DEFECTO,
+    hashearPin(PIN_ADMIN_POR_DEFECTO),
   );
 }
 

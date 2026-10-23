@@ -68,9 +68,41 @@ describe('esquema', () => {
     }
   });
 
-  it('deja la base en la versión 1', () => {
+  it('deja la base en la versión actual', () => {
     expect(versionEsquema(enMemoria())).toBe(SCHEMA_VERSION);
-    expect(SCHEMA_VERSION).toBe(1);
+    expect(SCHEMA_VERSION).toBe(2);
+  });
+
+  it('migra una base v1 a v2 conservando los datos', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'tienda-bd-'));
+    const ruta = path.join(dir, 'tienda.db');
+
+    // Base con el esquema v1 tal como lo tenían los clientes: usuarios sin
+    // columnas de bloqueo y user_version = 1.
+    const db = abrir(ruta);
+    db.exec('DROP TABLE usuarios');
+    db.exec(`CREATE TABLE usuarios (
+      id        INTEGER PRIMARY KEY AUTOINCREMENT,
+      nombre    TEXT NOT NULL,
+      rol       TEXT NOT NULL DEFAULT 'cajero',
+      pin       TEXT,
+      activo    INTEGER NOT NULL DEFAULT 1,
+      creado_en DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`);
+    db.exec("INSERT INTO usuarios (nombre, rol, pin) VALUES ('Alex', 'cajero', '1234')");
+    db.exec('PRAGMA user_version = 1');
+    db.close();
+
+    const otra = abrir(ruta);
+    expect(versionEsquema(otra)).toBe(2);
+    const fila = qUno<{ nombre: string; intentos_fallidos: number; bloqueado_hasta: string | null }>(
+      otra,
+      'SELECT nombre, intentos_fallidos, bloqueado_hasta FROM usuarios WHERE id = 1',
+    );
+    expect(fila).toEqual({ nombre: 'Alex', intentos_fallidos: 0, bloqueado_hasta: null });
+
+    otra.close();
+    fs.rmSync(dir, { recursive: true, force: true });
   });
 
   it('es idempotente: abrir dos veces no rompe nada', () => {

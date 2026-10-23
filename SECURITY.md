@@ -14,8 +14,12 @@ Por favor, incluye:
 
 ## Buenas prácticas del proyecto
 
-- Los PIN de operador se guardan en texto plano en la base local por ahora; el
-  repositorio **no** almacena credenciales de ningún servicio externo.
+- Los PIN de operador se guardan **hasheados** con `scrypt` (salt aleatorio por
+  usuario, comparación en tiempo constante). Los PIN creados por versiones
+  anteriores se migran al primer inicio de sesión correcto; nunca se vuelven a
+  escribir en claro. Tras 5 intentos fallidos el operador queda bloqueado 60
+  segundos, y tras 10, 5 minutos.
+- El repositorio **no** almacena credenciales de ningún servicio externo.
 - Toda la información sensible vive en la base de datos local
   (`tienda.db`) dentro de los datos de la aplicación; nunca se sube al repo.
 - La base de datos del negocio se respalda automáticamente una vez al día en

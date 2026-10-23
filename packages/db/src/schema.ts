@@ -35,7 +35,7 @@
  */
 
 /** Versión actual del esquema (PRAGMA user_version). */
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export const SCHEMA_SQL = `
 -- ============================ CATÁLOGO ============================
@@ -249,12 +249,14 @@ CREATE TABLE IF NOT EXISTS detalle_devoluciones (
 
 -- rol: admin | cajero
 CREATE TABLE IF NOT EXISTS usuarios (
-    id        INTEGER PRIMARY KEY AUTOINCREMENT,
-    nombre    TEXT NOT NULL,
-    rol       TEXT NOT NULL DEFAULT 'cajero',
-    pin       TEXT,   -- PIN numérico de 4 dígitos
-    activo    INTEGER NOT NULL DEFAULT 1,
-    creado_en DATETIME DEFAULT CURRENT_TIMESTAMP
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre            TEXT NOT NULL,
+    rol               TEXT NOT NULL DEFAULT 'cajero',
+    pin               TEXT,   -- PIN numérico de 4 dígitos (ahora scrypt)
+    activo            INTEGER NOT NULL DEFAULT 1,
+    intentos_fallidos INTEGER NOT NULL DEFAULT 0,
+    bloqueado_hasta   DATETIME,
+    creado_en         DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 -- estado: abierta | revisada | cerrada

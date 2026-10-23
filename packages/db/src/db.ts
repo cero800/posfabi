@@ -89,7 +89,27 @@ const MIGRACIONES: ReadonlyArray<{
   version: number;
   nombre: string;
   aplicar: (db: DatabaseSync) => void;
-}> = [];
+}> = [
+  {
+    version: 1,
+    nombre: 'bloqueo_pin_por_intentos',
+    aplicar: (db: DatabaseSync) => {
+      // Agrega columnas para el bloqueo escalonado. Si ya existen (bases
+      // creadas con un esquema intermedio), SQLite falla con "duplicate
+      // column name": se ignora para mantener la migración idempotente.
+      try {
+        db.exec('ALTER TABLE usuarios ADD COLUMN intentos_fallidos INTEGER NOT NULL DEFAULT 0');
+      } catch {
+        /* ya existe */
+      }
+      try {
+        db.exec('ALTER TABLE usuarios ADD COLUMN bloqueado_hasta DATETIME');
+      } catch {
+        /* ya existe */
+      }
+    },
+  },
+];
 
 export function versionEsquema(db: DatabaseSync): number {
   const fila = qUno<{ user_version: number }>(db, 'PRAGMA user_version');

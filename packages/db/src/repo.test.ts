@@ -1124,6 +1124,60 @@ describe('usuarios', () => {
     expect(verificarPin(db, id, '1234')).toBe(false);
   });
 
+  it('guarda el PIN hasheado y no en claro', () => {
+    const db = bd();
+    const id = crearUsuario(db, { nombre: 'Alex', rol: 'cajero', activo: true, pin: '4821' });
+    const almacenado = qUno<{ pin: string }>(db, 'SELECT pin FROM usuarios WHERE id = ?', id)!.pin;
+    expect(almacenado).not.toBe('4821');
+    expect(almacenado.startsWith('scrypt$')).toBe(true);
+    expect(verificarPin(db, id, '4821')).toBe(true);
+  });
+
+  it('bloquea tras 5 fallos y el bloqueo expira', () => {
+    const db = bd();
+    const id = crearUsuario(db, { nombre: 'Alex', rol: 'cajero', activo: true, pin: '4821' });
+
+    for (let i = 0; i < 5; i += 1) {
+      expect(verificarPin(db, id, '0000')).toBe(false);
+    }
+    // El sexto intento, aun con el PIN correcto, es rechazado por el bloqueo.
+    expect(codigoDe(() => verificarPin(db, id, '4821'))).toBe(CODIGO_ERROR.pin_incorrecto);
+
+    // El bloqueo vence: se puede volver a intentar.
+    db.prepare("UPDATE usuarios SET bloqueado_hasta = '2000-01-01 00:00:00' WHERE id = ?").run(id);
+    expect(verificarPin(db, id, '4821')).toBe(true);
+    const fila = qUno<{ intentos_fallidos: number; bloqueado_hasta: string | null }>(
+      db,
+      'SELECT intentos_fallidos, bloqueado_hasta FROM usuarios WHERE id = ?',
+      id,
+    );
+    expect(fila).toEqual({ intentos_fallidos: 0, bloqueado_hasta: null });
+  });
+
+  it('un acierto resetea el contador de intentos', () => {
+    const db = bd();
+    const id = crearUsuario(db, { nombre: 'Alex', rol: 'cajero', activo: true, pin: '4821' });
+    for (let i = 0; i < 3; i += 1) verificarPin(db, id, '0000');
+    expect(qUno<{ n: number }>(db, 'SELECT intentos_fallidos AS n FROM usuarios WHERE id = ?', id)!.n).toBe(3);
+    expect(verificarPin(db, id, '4821')).toBe(true);
+    expect(qUno<{ n: number }>(db, 'SELECT intentos_fallidos AS n FROM usuarios WHERE id = ?', id)!.n).toBe(0);
+  });
+
+  it('migra un PIN en claro viejo al verificar', () => {
+    const db = bd();
+    // Simula una base anterior al hash.
+    const id = Number(
+      db.prepare("INSERT INTO usuarios (nombre, rol, pin) VALUES ('Viejo', 'cajero', '7382')").run()
+        .lastInsertRowid,
+    );
+    expect(qUno<{ pin: string }>(db, 'SELECT pin FROM usuarios WHERE id = ?', id)!.pin).toBe('7382');
+
+    expect(verificarPin(db, id, '7382')).toBe(true);
+    const migrado = qUno<{ pin: string }>(db, 'SELECT pin FROM usuarios WHERE id = ?', id)!.pin;
+    expect(migrado.startsWith('scrypt$')).toBe(true);
+    expect(verificarPin(db, id, '7382')).toBe(true);
+  });
+
   it('lista solo los usuarios activos', () => {
     const db = bd();
     crearUsuario(db, { nombre: 'Alex', rol: 'cajero', activo: true, pin: '1111' });
