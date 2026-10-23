@@ -173,6 +173,17 @@ export default function ReportePage() {
               <Stat label="Ventas Bs" valor={totalVentasBs ? formatUsdCents(totalVentasBs) : '—'} />
               <Stat label="Efectivo US$" valor={formatUsdCents(dato.pagos_efectivo_usd)} />
               <Stat label="Efectivo Bs" valor={formatUsdCents(dato.pagos_efectivo_ves)} />
+              {/* Crédito y abonos van aparte del total del día: lo fiado no entró
+                  a la gaveta, y lo cobrado no es venta de hoy. Son las dos cifras
+                  que dicen si la cartera se está moviendo o solo creciendo. */}
+              <Stat
+                label="Crédito otorgado"
+                valor={dato.total_credito_usd ? formatUsdCents(dato.total_credito_usd) : '—'}
+              />
+              <Stat
+                label="Abonos cobrados"
+                valor={dato.total_abonos_usd ? formatUsdCents(dato.total_abonos_usd) : '—'}
+              />
             </div>
           </Card>
 

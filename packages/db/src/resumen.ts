@@ -10,11 +10,12 @@
 // guardados no puedan discrepar.
 
 import type { DatabaseSync } from 'node:sqlite';
-import type { EntradaResumen, ResumenDia, ResumenDiaDevolucion } from '@tienda/core';
+import type { CierreAbono, EntradaResumen, ResumenDia, ResumenDiaDevolucion } from '@tienda/core';
 
 import { HOY_SQL, qTodos, qUno } from './db.js';
 import { estadoCuentaTodos } from './deudores.js';
 import { detalleDevolucion } from './devoluciones.js';
+import { aUsd, aVes, redondearCent } from './money.js';
 
 /**
  * Condición de fecha para una columna, con o sin día explícito.
@@ -87,6 +88,28 @@ function devolucionesDelDia(db: DatabaseSync, fecha: string | null): ResumenDiaD
   return filas.map((d) => ({ ...d, detalle: detalleDevolucion(db, d.id) }));
 }
 
+/**
+ * Abonos cobrados en el día: pagos de deuda, no de venta.
+ *
+ * Se distingue de un pago de venta por `venta_id IS NULL`, que es como los graba
+ * `registrarAbono`. La conversión por moneda es la misma que usa `cerrarCaja`
+ * para el arqueo: cada abono vale lo que valía su `tasa_cambio` el día que se
+ * cobró, y por eso el total en bolívares no es el total en dólares por una tasa
+ * de hoy.
+ */
+function abonosDelDia(db: DatabaseSync, fecha: string | null): CierreAbono[] {
+  const f = filtroFecha('p.fecha_pago', fecha);
+  return qTodos<CierreAbono>(
+    db,
+    `SELECT p.cliente_id, c.nombre AS cliente, p.tipo_pago, p.moneda, p.monto,
+            p.tasa_cambio, p.fecha_pago
+       FROM pagos p JOIN clientes c ON c.id = p.cliente_id
+      WHERE p.venta_id IS NULL AND ${f.sql}
+      ORDER BY p.id`,
+    ...f.params,
+  );
+}
+
 /** Pagos en efectivo del día, separados por moneda. */
 function efectivoDelDia(db: DatabaseSync, fecha: string | null): {
   usd: number;
@@ -112,15 +135,41 @@ function efectivoDelDia(db: DatabaseSync, fecha: string | null): {
  */
 export function resumenDia(db: DatabaseSync, fecha: string | null = null): ResumenDia {
   const efectivo = efectivoDelDia(db, fecha);
+  const listaVentas = ventas(db, fecha);
+  const abonos = abonosDelDia(db, fecha);
+
+  // El crédito del día sale de las ventas a crédito. `monto` está en US$ (la
+  // base del sistema) y los bolívares se derivan con la tasa de cada venta, que
+  // es la que quedó congelada cuando se fió.
+  const ventasCredito = listaVentas.filter((v) => v.tipo === 'credito');
+  const totalCreditoUsd = ventasCredito.reduce((s, v) => s + v.monto, 0);
+  const totalCreditoBs = ventasCredito.reduce(
+    (s, v) => s + redondearCent(v.monto * v.tasa_cambio),
+    0,
+  );
+
+  // Misma conversión que el arqueo: cada abono vale lo que valía su tasa.
+  const totalAbonosUsd = abonos.reduce(
+    (suma, a) => suma + (a.moneda === 'usd' ? a.monto : aUsd(a.monto, 'ves', a.tasa_cambio)),
+    0,
+  );
+  const totalAbonosBs = abonos.reduce(
+    (suma, a) => suma + (a.moneda === 'ves' ? a.monto : aVes(a.monto, 'usd', a.tasa_cambio)),
+    0,
+  );
 
   return {
     entradas: entradas(db, fecha),
-    ventas: ventas(db, fecha),
+    ventas: listaVentas,
     pagos_efectivo_usd: efectivo.usd,
     pagos_efectivo_ves: efectivo.ves,
     devoluciones: devolucionesDelDia(db, fecha),
     // Deudores: solo los que deben algo. Mostrar a los que están al día en una
     // lista de cobranza solo hace ruido.
     deudores: estadoCuentaTodos(db).filter((d) => d.saldo_pendiente > 0),
+    total_credito_usd: totalCreditoUsd,
+    total_credito_bs: totalCreditoBs,
+    total_abonos_usd: totalAbonosUsd,
+    total_abonos_bs: totalAbonosBs,
   };
 }

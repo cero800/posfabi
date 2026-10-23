@@ -70,6 +70,44 @@ describe('resumenDia', () => {
     expect(r.deudores).toEqual([]);
     expect(r.pagos_efectivo_usd).toBe(0);
     expect(r.pagos_efectivo_ves).toBe(0);
+    expect(r.total_credito_usd).toBe(0);
+    expect(r.total_credito_bs).toBe(0);
+    expect(r.total_abonos_usd).toBe(0);
+    expect(r.total_abonos_bs).toBe(0);
+  });
+
+  it('suma el crédito otorgado y deja fuera las ventas de contado', () => {
+    const ctx = escenario();
+    tasa(ctx.db, 10);
+    vender(ctx, 3, ctx.ana, 'credito'); // 300 fiado
+    vender(ctx, 1, ctx.mostrador, 'contado', [{ monto: 100 }]); // 100 cobrado
+
+    const r = resumenDia(ctx.db);
+    expect(r.total_credito_usd).toBe(300);
+    // Los bolívares salen de la tasa congelada de la venta (10), no de una de hoy.
+    expect(r.total_credito_bs).toBe(3000);
+  });
+
+  it('suma los abonos del día convirtiendo cada uno a su propia tasa', () => {
+    const ctx = escenario();
+    tasa(ctx.db, 10);
+    vender(ctx, 5, ctx.ana, 'credito');
+
+    registrarAbono(ctx.db, {
+      cliente_id: ctx.ana,
+      pagos: [{ monto: 200, tipo_pago: 'efectivo', moneda: 'usd' }],
+      operador_id: ctx.op,
+    });
+    registrarAbono(ctx.db, {
+      cliente_id: ctx.ana,
+      pagos: [{ monto: 1000, tipo_pago: 'efectivo', moneda: 'ves' }],
+      operador_id: ctx.op,
+    });
+
+    const r = resumenDia(ctx.db);
+    // 200 US$ + 1000 Bs (=$100 a tasa 10) = 300 US$; 2000 Bs + 1000 Bs = 3000 Bs.
+    expect(r.total_abonos_usd).toBe(300);
+    expect(r.total_abonos_bs).toBe(3000);
   });
 
   it('lista las ventas del día con el nombre del cliente', () => {

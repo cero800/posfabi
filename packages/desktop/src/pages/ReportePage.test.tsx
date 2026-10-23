@@ -37,6 +37,10 @@ const resumen = {
     { id: 1, venta_id: 2, numero_factura: 2, cliente: 'Librería del Centro', monto: 2000, motivo: 'artículo devuelto', operador_nombre: 'Ana', fecha_devolucion: '2026-09-04', detalle: [{ producto_id: 3, nombre: 'Cuaderno Carta', cantidad: 10, precio_unitario: 200, subtotal: 2000 }] },
   ],
   deudores: [],
+  total_credito_usd: 3000,
+  total_credito_bs: 110550,
+  total_abonos_usd: 1500,
+  total_abonos_bs: 55275,
 };
 
 beforeEach(() => {
@@ -62,6 +66,22 @@ describe('ReportePage', () => {
     expect(screen.getByText('$80.00')).toBeInTheDocument();
     expect(screen.getAllByText('-$20.00').length).toBeGreaterThan(0);
     expect(screen.getByText('$60.00')).toBeInTheDocument();
+  });
+
+  /**
+   * El crédito y los abonos del día van aparte del total: lo fiado no entró a la
+   * gaveta y lo cobrado no es venta de hoy. Antes no aparecían y no había forma
+   * de ver si la cartera se movía.
+   */
+  it('muestra el crédito otorgado y los abonos cobrados del día', async () => {
+    render(<ReportePage />);
+    const credito = await screen.findByText('Crédito otorgado');
+    const abonos = screen.getByText('Abonos cobrados');
+    // El valor va en la misma tarjeta que su rótulo. Se busca ahí dentro y no en
+    // toda la pantalla porque `$30.00` también sale en la tabla de ventas (la
+    // factura a crédito del mismo día).
+    expect(credito.parentElement).toHaveTextContent('$30.00');
+    expect(abonos.parentElement).toHaveTextContent('$15.00');
   });
 
   it('muestra junto a cada factura lo devuelto y el neto', async () => {

@@ -591,6 +591,26 @@ export interface ResumenDia {
   pagos_efectivo_ves: number;
   devoluciones: ResumenDiaDevolucion[];
   deudores: EstadoCuenta[];
+  /**
+   * Crédito otorgado en el día: la suma de las ventas a crédito.
+   *
+   * Va aparte de `ventas` porque el total del día no dice cuánto de eso quedó
+   * fiado, y el fiado es justo lo que hay que vigilar: una venta a crédito entra
+   * al arqueo como un papel, no como dinero en la gaveta. Se calcula aquí y no
+   * en la pantalla para que sea el mismo número que vea cualquier consumidor del
+   * resumen.
+   */
+  total_credito_usd: number;
+  total_credito_bs: number;
+  /**
+   * Abonos cobrados en el día (pagos de deuda, no de venta), en las dos monedas.
+   *
+   * Cada abono trae su propia `tasa_cambio`, así que el total en Bs es la suma
+   * de cada abono convertido a la tasa con que se cobró, no el total en USD por
+   * una tasa de hoy: un abono en bolívares vale los bolívares que entraron.
+   */
+  total_abonos_usd: number;
+  total_abonos_bs: number;
 }
 
 //---------------------------------------------------------------------------
