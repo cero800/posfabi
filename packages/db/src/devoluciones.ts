@@ -42,6 +42,7 @@ import { AppError, CODIGO_ERROR, validacion } from './errors.js';
 import { redondearCent } from './money.js';
 import { clienteExiste, aplicarMovimiento } from './repo.js';
 import { validarMontoPositivo } from './validators.js';
+import { exigirCajaAbierta } from './caja.js';
 
 /**
  * Valida que el detalle cuadre con el monto declarado.
@@ -113,6 +114,12 @@ export function registrarDevolucion(db: DatabaseSync, input: DevolucionInput): D
   if (detalle.length > 0) {
     validarDetalle(detalle, input.monto);
   }
+
+  // Igual que la venta y el abono: sin turno abierto no se registra una
+  // devolución. No mueve la gaveta, pero sí reingresa mercadería y ajusta la
+  // cuenta del cliente, y eso tiene que caer dentro de un día que se va a
+  // arquear.
+  exigirCajaAbierta(db);
 
   return transaccion(db, () => {
     clienteExiste(db, input.cliente_id);

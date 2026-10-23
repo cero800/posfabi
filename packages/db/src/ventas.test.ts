@@ -14,6 +14,7 @@ import {
 import { cantidadDisponible, setPrecioCliente } from './repo.js';
 import { registrarAbono } from './pagos.js';
 import { registrarDevolucion } from './devoluciones.js';
+import { cerrarCaja } from './caja.js';
 import { estadoCuenta } from './deudores.js';
 import {
   abrirCaja,
@@ -653,6 +654,18 @@ describe('anularVenta', () => {
   it('no anula una venta que no existe', () => {
     const { db, op } = escenario();
     expect(codigoDe(() => anularVenta(db, 999, 'x', op))).toBe(CODIGO_ERROR.no_encontrado);
+  });
+
+  it('exige caja abierta: no se anula con el turno cerrado', () => {
+    // Anular después del cierre devolvería mercadería al stock fuera de todo
+    // arqueo, y el conteo de esa noche ya está firmado.
+    const { db, op, ana, p } = ventaConStock();
+    const id = sinCobrar(db, p, 1, op, ana);
+    cerrarCaja(db, { caja_id: 1, operador_id: op, tasa_cierre: 10, efectivo_contado_usd: 0, efectivo_contado_ves: 0 });
+
+    expect(codigoDe(() => anularVenta(db, id, 'tarde', op))).toBe(CODIGO_ERROR.caja_cerrada);
+    expect(obtenerVenta(db, id).estado).toBe('entregada');
+    expect(cantidadDisponible(db, p)).toBe(9);
   });
 
   it('una venta anulada sale del total facturado del cliente', () => {

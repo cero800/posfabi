@@ -366,6 +366,11 @@ export function anularVenta(
     throw new AppError(CODIGO_ERROR.venta_anulada, 'La venta ya está anulada');
   }
 
+  // Anular con el turno cerrado devolvería mercadería al stock fuera de todo
+  // arqueo: el conteo de esa noche ya está firmado y el reingreso aparecería en
+  // un día cuyo cierre no lo contempla. La misma regla que la venta.
+  exigirCajaAbierta(db);
+
   transaccion(db, () => {
     // Dentro de la transacción, no antes: un abono que entra entre la
     // comprobación y la escritura tiene que ver la venta todavía viva.

@@ -12,6 +12,7 @@ import {
   registrarDevolucion,
 } from './devoluciones.js';
 import { crearVenta } from './ventas.js';
+import { cerrarCaja } from './caja.js';
 import { cantidadDisponible } from './repo.js';
 import { estadoCuenta } from './deudores.js';
 import {
@@ -156,6 +157,19 @@ describe('registrarDevolucion', () => {
       total: 400,
       estado: 'entregada',
     });
+  });
+
+  it('exige caja abierta: no se devuelve con el turno cerrado', () => {
+    // La devolución no mueve la gaveta, pero sí puede reingresar mercadería y
+    // ajustar la cuenta del cliente. Permitirla con la caja cerrada deja ese
+    // cambio fuera del día que se está cerrando y del siguiente, sin rastro en
+    // ningún arqueo.
+    const ctx = escenario();
+    const venta = ventaDe400(ctx.db, ctx);
+    cerrarCaja(ctx.db, { caja_id: 1, operador_id: ctx.op, tasa_cierre: 10, efectivo_contado_usd: 0, efectivo_contado_ves: 0 });
+
+    expect(codigoDe(() => devolucionDe(venta, ctx))).toBe(CODIGO_ERROR.caja_cerrada);
+    expect(qUno<{ n: number }>(ctx.db, 'SELECT COUNT(*) AS n FROM devoluciones')).toEqual({ n: 0 });
   });
 
   it('guarda el motivo aunque venga vacío', () => {
