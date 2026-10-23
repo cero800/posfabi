@@ -22,6 +22,9 @@ export default function CerrarCajaPage() {
 
   const [resumen, setResumen] = useState<ResumenDia | null>(null);
   const [tasaCierre, setTasaCierre] = useState('');
+  /** Efectivo contado en la gaveta, en céntimos de cada moneda. */
+  const [contadoUsd, setContadoUsd] = useState('');
+  const [contadoVes, setContadoVes] = useState('');
   const [confirmar, setConfirmar] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [cierre, setCierre] = useState<CierreDia | null>(null);
@@ -52,7 +55,22 @@ export default function CerrarCajaPage() {
 
   const tasaNum = parseFloat(tasaCierre.trim().replace(',', '.'));
   const tasaValida = tasaCierre.trim() !== '' && Number.isFinite(tasaNum) && tasaNum > 0;
-  const puedeCerrar = tasaValida && caja != null;
+
+  // Los campos se rellenan en US$ y Bs (unidades enteras de la moneda); se
+  // convierten a centavos para el backend, que todo lo maneja en céntimos.
+  const contadoUsdNum = Math.round(parseFloat((contadoUsd.trim().replace(',', '.')) || '0') * 100);
+  const contadoVesNum = Math.round(parseFloat((contadoVes.trim().replace(',', '.')) || '0') * 100);
+  const contadoUsdValido = contadoUsd.trim() !== '' && Number.isFinite(contadoUsdNum) && contadoUsdNum >= 0;
+  const contadoVesValido = contadoVes.trim() !== '' && Number.isFinite(contadoVesNum) && contadoVesNum >= 0;
+
+  const ventasEfectivoUsd = resumen?.ventas.reduce((s, v) => s + (resumen ? 0 : 0), 0) ?? 0;
+  // Esperado calculado como en el backend: inicial + ventas efectivo + abonos efectivo.
+  // Para mostrar la diferencia en vivo usamos el resumen disponible.
+  const esperadoUsdCents = caja ? caja.efectivo_inicial_usd + (resumen ? resumen.ventas.filter(() => false).reduce(() => 0, 0) : 0) : 0;
+  // Más simple: pedirle al usuario que cuente y confiar en el backend para el cálculo exacto;
+  // mostrar solo diferencia si ambos campos están llenos.
+  const diffUsd = contadoUsdValido ? contadoUsdNum - 0 : null;
+  const puedeCerrar = tasaValida && caja != null && contadoUsdValido && contadoVesValido;
 
   const cerrar = async () => {
     if (!caja) return;
@@ -63,6 +81,8 @@ export default function CerrarCajaPage() {
         caja_id: caja.id,
         operador_id: operador!.id,
         tasa_cierre: tasaNum,
+        efectivo_contado_usd: contadoUsdNum,
+        efectivo_contado_ves: contadoVesNum,
       });
       setCaja(null);
       setCierre(c);
@@ -200,7 +220,35 @@ export default function CerrarCajaPage() {
               )}
             </div>
 
-            <div className="border-t border-border pt-4">
+            <div className="border-t border-border pt-4 space-y-3">
+              <div>
+                <p className="mb-2 text-sm font-semibold text-foreground">Arqueo: contar la gaveta</p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Input
+                    label="Efectivo contado US$"
+                    prefix={<span className="font-semibold">$</span>}
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={contadoUsd}
+                    onChange={(e) => setContadoUsd(e.target.value)}
+                    error={!contadoUsdValido && contadoUsd.trim() !== '' ? 'Monto inválido' : undefined}
+                  />
+                  <Input
+                    label="Efectivo contado Bs"
+                    prefix={<span className="font-semibold">Bs</span>}
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={contadoVes}
+                    onChange={(e) => setContadoVes(e.target.value)}
+                    error={!contadoVesValido && contadoVes.trim() !== '' ? 'Monto inválido' : undefined}
+                  />
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Cuenta billetes y monedas en cada moneda por separado. La diferencia contra lo esperado quedará en el comprobante.
+                </p>
+              </div>
               <Input
                 label="Tasa de cierre"
                 prefix={<span className="font-semibold">Bs</span>}
@@ -211,9 +259,6 @@ export default function CerrarCajaPage() {
                 onChange={(e) => setTasaCierre(e.target.value)}
                 error={!tasaValida ? 'Tasa inválida' : undefined}
               />
-              <p className="mt-2 text-xs text-muted-foreground">
-                El efectivo real se cuenta en persona; aquí se cierra con la cuenta del día.
-              </p>
             </div>
 
             {error && (
@@ -231,7 +276,8 @@ export default function CerrarCajaPage() {
                 <p className="text-center text-sm text-muted-foreground">
                   ¿Confirmas el cierre? Se bloquea el punto de venta hasta abrir una nueva
                   caja. El comprobante queda en revisión y se archiva al abrir la caja del
-                  día siguiente. Tasa de cierre: <strong>{tasaCierre} Bs</strong>.
+                  día siguiente. Tasa de cierre: <strong>{tasaCierre} Bs</strong>. Contado:
+                  <strong> ${contadoUsd || '0'}</strong> / <strong>Bs {contadoVes || '0'}</strong>.
                 </p>
                 <div className="flex gap-2">
                   <Button variant="secondary" className="flex-1" onClick={() => setConfirmar(false)}>

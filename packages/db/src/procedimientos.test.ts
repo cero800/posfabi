@@ -188,7 +188,7 @@ describe('recorrido de negocio por el registro', () => {
     expect(cuenta.saldo_pendiente).toBe(700);
 
     const cierre = await ok<{ total_ventas_usd: number; ventas: unknown[] }>('cerrar_caja', {
-      caja: { caja_id: caja?.id, operador_id: admin, tasa_cierre: 36.5 },
+      caja: { caja_id: caja?.id, operador_id: admin, tasa_cierre: 36.5, efectivo_contado_usd: 700, efectivo_contado_ves: 0 },
     });
     expect(cierre.total_ventas_usd).toBe(700);
     expect(cierre.ventas).toHaveLength(1);

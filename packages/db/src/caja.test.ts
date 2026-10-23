@@ -127,7 +127,7 @@ describe('cerrar la caja', () => {
     const { db, op, mostrador, a } = escenario();
     vender(db, a, 2, 200, op, mostrador);
 
-    const cierre = cerrarCaja(db, { caja_id: 1, operador_id: op, tasa_cierre: 10 });
+    const cierre = cerrarCaja(db, { caja_id: 1, operador_id: op, tasa_cierre: 10, efectivo_contado_usd: 200, efectivo_contado_ves: 0 });
 
     expect(cierre.efectivo_ventas_usd).toBe(200);
     expect(cierre.efectivo_esperado_usd).toBe(200);
@@ -141,7 +141,7 @@ describe('cerrar la caja', () => {
     vender(db, a, 1, 100, op, mostrador);                    // $1.00 en efectivo
     vender(db, b, 1, 500, op, mostrador, { moneda: 'ves' });  // Bs 5 = $0.50 en efectivo
 
-    const cierre = cerrarCaja(db, { caja_id: 1, operador_id: op, tasa_cierre: 10 });
+    const cierre = cerrarCaja(db, { caja_id: 1, operador_id: op, tasa_cierre: 10, efectivo_contado_usd: 100, efectivo_contado_ves: 500 });
 
     // Lo importante: los dos efectivos NO se suman en un solo número. El
     // billete de Bs y el billete de dólar son cajas distintas.
@@ -163,7 +163,7 @@ describe('cerrar la caja', () => {
       referencia: '998877',
     });
 
-    const cierre = cerrarCaja(db, { caja_id: 1, operador_id: op, tasa_cierre: 10 });
+    const cierre = cerrarCaja(db, { caja_id: 1, operador_id: op, tasa_cierre: 10, efectivo_contado_usd: 0, efectivo_contado_ves: 0 });
 
     // Cobrado por transferencia no entra a la gaveta, pero sí al desglose.
     expect(cierre.efectivo_ventas_usd).toBe(0);
@@ -180,7 +180,7 @@ describe('cerrar la caja', () => {
     vender(db, b, 1, 500, op, mostrador, { moneda: 'ves' });
     vender(db, b, 1, 500, op, mostrador, { tipo_pago: 'biopago', moneda: 'ves' });
 
-    const cierre = cerrarCaja(db, { caja_id: 1, operador_id: op, tasa_cierre: 10 });
+    const cierre = cerrarCaja(db, { caja_id: 1, operador_id: op, tasa_cierre: 10, efectivo_contado_usd: 0, efectivo_contado_ves: 0 });
 
     expect(cierre.pagos).toEqual([
       { tipo_pago: 'biopago', moneda: 'ves', monto: 500 },
@@ -212,7 +212,7 @@ describe('cerrar la caja', () => {
          ('negocio_direccion', 'Av. Miranda, Caracas')`,
     );
 
-    const cierre = cerrarCaja(db, { caja_id: 1, operador_id: op, tasa_cierre: 10 });
+    const cierre = cerrarCaja(db, { caja_id: 1, operador_id: op, tasa_cierre: 10, efectivo_contado_usd: 0, efectivo_contado_ves: 0 });
     expect(cierre.negocio_nombre).toBe('Papelería El Lápiz');
     expect(cierre.negocio_rif).toBe('J-40123456-7');
     expect(cierre.negocio_telefono).toBe('0212-1234567');
@@ -224,7 +224,7 @@ describe('cerrar la caja', () => {
     tasa(db, 10);
     vender(db, a, 3, 300, op, mostrador);
 
-    const cierre = cerrarCaja(db, { caja_id: 1, operador_id: op, tasa_cierre: 10 });
+    const cierre = cerrarCaja(db, { caja_id: 1, operador_id: op, tasa_cierre: 10, efectivo_contado_usd: 300, efectivo_contado_ves: 0 });
     expect(cierre.ventas).toHaveLength(1);
     expect(cierre.ventas[0]).toMatchObject({
       cliente: 'Mostrador',
@@ -257,7 +257,7 @@ describe('cerrar la caja', () => {
       operador_id: op,
     });
 
-    const cierre = cerrarCaja(db, { caja_id: 1, operador_id: op, tasa_cierre: 10 });
+    const cierre = cerrarCaja(db, { caja_id: 1, operador_id: op, tasa_cierre: 10, efectivo_contado_usd: 250, efectivo_contado_ves: 0 });
     expect(cierre.total_abonos_usd).toBe(250);
     expect(cierre.total_abonos_bs).toBe(2500);
     // Un abono no es una venta: no va a la lista de ventas del día.
@@ -283,7 +283,7 @@ describe('cerrar la caja', () => {
       operador_id: op,
     });
 
-    const cierre = cerrarCaja(db, { caja_id: 1, operador_id: op, tasa_cierre: 10 });
+    const cierre = cerrarCaja(db, { caja_id: 1, operador_id: op, tasa_cierre: 10, efectivo_contado_usd: 350, efectivo_contado_ves: 0 });
     // El abono no es una venta, así que no va en `efectivo_ventas_usd`...
     expect(cierre.efectivo_ventas_usd).toBe(100);
     expect(cierre.abonos_efectivo_usd).toBe(250);
@@ -309,7 +309,7 @@ describe('cerrar la caja', () => {
       operador_id: op,
     });
 
-    const cierre = cerrarCaja(db, { caja_id: 1, operador_id: op, tasa_cierre: 10 });
+    const cierre = cerrarCaja(db, { caja_id: 1, operador_id: op, tasa_cierre: 10, efectivo_contado_usd: 100, efectivo_contado_ves: 2000 });
     // El billete de Bs no se convierte a dólares para la gaveta: son dos
     // gavetas. Sumarlo a la de dólares daría un número que no se puede contar.
     expect(cierre.efectivo_esperado_usd).toBe(100);
@@ -320,14 +320,12 @@ describe('cerrar la caja', () => {
     const { db, op, mostrador, a } = escenario();
     vender(db, a, 1, 100, op, mostrador);
 
-    cerrarCaja(db, { caja_id: 1, operador_id: op, tasa_cierre: 10 });
+    cerrarCaja(db, { caja_id: 1, operador_id: op, tasa_cierre: 10, efectivo_contado_usd: 0, efectivo_contado_ves: 0 });
 
     expect(cajaAbierta(db)).toBeNull();
     // El cierre queda en revisión hasta que abra la caja del día siguiente.
     expect(obtenerCaja(db, 1).estado).toBe('revisada');
-    expect(codigoDe(() => cerrarCaja(db, { caja_id: 1, operador_id: op, tasa_cierre: 10 }))).toBe(
-      CODIGO_ERROR.caja_no_abierta,
-    );
+    expect(codigoDe(() => cerrarCaja(db, { caja_id: 1, operador_id: op, tasa_cierre: 10, efectivo_contado_usd: 200, efectivo_contado_ves: 0 }))).toBe(CODIGO_ERROR.caja_no_abierta);
   });
 
   it('el efectivo esperado sale del inicial más lo vendido, no de lo que hubiera escrito', () => {
@@ -335,7 +333,7 @@ describe('cerrar la caja', () => {
     db.prepare('UPDATE cajas SET efectivo_esperado_usd = 99999 WHERE id = 1').run();
     vender(db, a, 2, 200, op, mostrador);
 
-    const cierre = cerrarCaja(db, { caja_id: 1, operador_id: op, tasa_cierre: 10 });
+    const cierre = cerrarCaja(db, { caja_id: 1, operador_id: op, tasa_cierre: 10, efectivo_contado_usd: 200, efectivo_contado_ves: 0 });
     // 0 inicial + 200 cobrados. El 99999 escrito a mano no cuenta.
     expect(cierre.efectivo_esperado_usd).toBe(200);
   });
@@ -345,32 +343,26 @@ describe('cerrar la caja', () => {
     const op = crearUsuario(db);
     abrir(db, op);
     abrir(db, op); // dos cajas abiertas: la 2 es la que vale
-    expect(codigoDe(() => cerrarCaja(db, { caja_id: 1, operador_id: op, tasa_cierre: 10 }))).toBe(
-      CODIGO_ERROR.validacion,
-    );
+    expect(codigoDe(() => cerrarCaja(db, { caja_id: 1, operador_id: op, tasa_cierre: 10, efectivo_contado_usd: 100, efectivo_contado_ves: 500 }))).toBe(CODIGO_ERROR.validacion);
     expect(cajaAbierta(db)?.id).toBe(2);
   });
 
   it('solo el operador que abrió la caja puede cerrarla', () => {
     const { db } = escenario();
     const otro = crearUsuario(db, 'Rosa');
-    expect(codigoDe(() => cerrarCaja(db, { caja_id: 1, operador_id: otro, tasa_cierre: 10 }))).toBe(
-      CODIGO_ERROR.validacion,
-    );
+    expect(codigoDe(() => cerrarCaja(db, { caja_id: 1, operador_id: otro, tasa_cierre: 10, efectivo_contado_usd: 0, efectivo_contado_ves: 0 }))).toBe(CODIGO_ERROR.validacion);
     expect(cajaAbierta(db)).not.toBeNull();
   });
 
   it('rechaza una tasa de cambio imposible', () => {
     const { db, op } = escenario();
-    expect(codigoDe(() => cerrarCaja(db, { caja_id: 1, operador_id: op, tasa_cierre: 0 }))).toBe(
-      CODIGO_ERROR.validacion,
-    );
+    expect(codigoDe(() => cerrarCaja(db, { caja_id: 1, operador_id: op, tasa_cierre: 0, efectivo_contado_usd: 0, efectivo_contado_ves: 0 }))).toBe(CODIGO_ERROR.validacion);
     expect(cajaAbierta(db)).not.toBeNull();
   });
 
   it('guarda la tasa del cierre tal cual se envió', () => {
     const { db, op } = escenario();
-    cerrarCaja(db, { caja_id: 1, operador_id: op, tasa_cierre: 36.5 });
+    cerrarCaja(db, { caja_id: 1, operador_id: op, tasa_cierre: 36.5, efectivo_contado_usd: 0, efectivo_contado_ves: 0 });
     expect(obtenerCaja(db, 1).tasa_cierre).toBe(36.5);
   });
 });
@@ -383,7 +375,7 @@ describe('el cierre queda en revisión hasta el día siguiente', () => {
   it('el cierre en revisión sigue bloqueando la venta', () => {
     const { db, op, mostrador, a } = escenario();
     vender(db, a, 1, 100, op, mostrador);
-    cerrarCaja(db, { caja_id: 1, operador_id: op, tasa_cierre: 10 });
+    cerrarCaja(db, { caja_id: 1, operador_id: op, tasa_cierre: 10, efectivo_contado_usd: 0, efectivo_contado_ves: 0 });
 
     // En revisión no es una caja abierta: el POS sigue bloqueado.
     expect(cajaAbierta(db)).toBeNull();
@@ -393,7 +385,7 @@ describe('el cierre queda en revisión hasta el día siguiente', () => {
   it('al abrir la caja del día siguiente, el cierre en revisión se archiva', () => {
     const { db, op, mostrador, a } = escenario();
     vender(db, a, 1, 100, op, mostrador);
-    cerrarCaja(db, { caja_id: 1, operador_id: op, tasa_cierre: 10 });
+    cerrarCaja(db, { caja_id: 1, operador_id: op, tasa_cierre: 10, efectivo_contado_usd: 0, efectivo_contado_ves: 0 });
     expect(obtenerCaja(db, 1).estado).toBe('revisada');
 
     abrirTurno(db, { operador_id: op });
@@ -405,7 +397,7 @@ describe('el cierre queda en revisión hasta el día siguiente', () => {
   it('la caja nueva hereda la gaveta del cierre en revisión', () => {
     const { db, op, mostrador, a } = escenario();
     vender(db, a, 1, 100, op, mostrador);
-    cerrarCaja(db, { caja_id: 1, operador_id: op, tasa_cierre: 10 });
+    cerrarCaja(db, { caja_id: 1, operador_id: op, tasa_cierre: 10, efectivo_contado_usd: 100, efectivo_contado_ves: 0 });
     const gaveta = obtenerCaja(db, 1).efectivo_final_usd;
     expect(gaveta).toBeGreaterThan(0);
 
@@ -418,10 +410,67 @@ describe('el cierre queda en revisión hasta el día siguiente', () => {
     const { db, op, mostrador, a } = escenario();
     vender(db, a, 2, 200, op, mostrador); // 2 cuadernos a 100 = 200 en efectivo
 
-    const enVivo = cerrarCaja(db, { caja_id: 1, operador_id: op, tasa_cierre: 36.5 });
+    const enVivo = cerrarCaja(db, { caja_id: 1, operador_id: op, tasa_cierre: 36.5, efectivo_contado_usd: 0, efectivo_contado_ves: 0 });
     abrirTurno(db, { operador_id: op }); // lo archiva
 
     const reconstruido = obtenerCierre(db, 1);
     expect(reconstruido).toEqual(enVivo);
   });
+
+  it('guarda el conteo real y calcula la diferencia por moneda', () => {
+    const { db, op, mostrador, a } = escenario();
+    vender(db, a, 2, 200, op, mostrador); // 200 US$ esperado
+
+    const cierre = cerrarCaja(db, { caja_id: 1, operador_id: op, tasa_cierre: 10, efectivo_contado_usd: 190, efectivo_contado_ves: 0 });
+    // Faltante de 10 dólares: contado 190, esperado 200
+    expect(cierre.efectivo_esperado_usd).toBe(200);
+    expect(cierre.efectivo_final_usd).toBe(190);
+    expect(cierre.diferencia_usd).toBe(-10);
+    expect(cierre.diferencia_ves).toBe(0);
+
+    // Y queda persistido
+    const c = obtenerCaja(db, 1);
+    expect(c.diferencia_usd).toBe(-10);
+    expect(c.efectivo_final_usd).toBe(190);
+  });
+
+  it('permite sobrante y abonos en bolívares con conteo propio', () => {
+    const { db, op, ana, mostrador, a } = escenario();
+    tasa(db, 10);
+    crearVenta(db, {
+      cliente_id: ana,
+      tipo: 'credito',
+      descuento: 0,
+      detalles: [{ producto_id: a, cantidad: 1 }],
+      pagos: [],
+      operador_id: op,
+    });
+    vender(db, a, 1, 100, op, mostrador);
+    registrarAbono(db, {
+      cliente_id: ana,
+      pagos: [{ monto: 500, tipo_pago: 'efectivo', moneda: 'ves' }],
+      operador_id: op,
+    });
+
+    const cierre = cerrarCaja(db, { caja_id: 1, operador_id: op, tasa_cierre: 10, efectivo_contado_usd: 100, efectivo_contado_ves: 600 });
+    expect(cierre.efectivo_esperado_usd).toBe(100);
+    expect(cierre.efectivo_esperado_ves).toBe(500);
+    // Sobrante de 100 Bs
+    expect(cierre.diferencia_usd).toBe(0);
+    expect(cierre.diferencia_ves).toBe(100);
+    expect(cierre.efectivo_final_ves).toBe(600);
+  });
+
+  it('obtenerCierre devuelve el conteo y la diferencia guardados', () => {
+    const { db, op, mostrador, a } = escenario();
+    vender(db, a, 1, 100, op, mostrador);
+    const enVivo = cerrarCaja(db, { caja_id: 1, operador_id: op, tasa_cierre: 12, efectivo_contado_usd: 105, efectivo_contado_ves: 0 });
+    expect(enVivo.diferencia_usd).toBe(5);
+    abrirTurno(db, { operador_id: op });
+    const reconstruido = obtenerCierre(db, 1);
+    expect(reconstruido.efectivo_final_usd).toBe(105);
+    expect(reconstruido.diferencia_usd).toBe(5);
+    expect(reconstruido.efectivo_esperado_usd).toBe(100);
+  });
+
 });

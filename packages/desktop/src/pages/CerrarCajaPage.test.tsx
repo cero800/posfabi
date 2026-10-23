@@ -112,8 +112,8 @@ describe('CerrarCajaPage', () => {
     expect(screen.getAllByText('$50.00').length).toBeGreaterThan(0);
     expect(screen.getByText('Bs 1.842,50')).toBeInTheDocument();
     expect(screen.getByLabelText(/Tasa de cierre/)).toHaveValue(36.85);
-    expect(screen.queryByLabelText(/Efectivo final US/)).not.toBeInTheDocument();
-    expect(screen.queryByLabelText(/Efectivo final Bs/)).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/Efectivo contado US/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Efectivo contado Bs/)).toBeInTheDocument();
   });
 
   it('cierra la caja sin efectivo final y abre el comprobante del día', async () => {
@@ -121,6 +121,8 @@ describe('CerrarCajaPage', () => {
     renderPagina();
     await screen.findByText('Cuenta del día');
 
+    await user.type(screen.getByLabelText(/Efectivo contado US/), '70');
+    await user.type(screen.getByLabelText(/Efectivo contado Bs/), '2585');
     await user.click(screen.getByRole('button', { name: /Cerrar caja/ }));
     expect(screen.getByText(/Tasa de cierre:/)).toHaveTextContent('36.85 Bs');
     await user.click(screen.getByRole('button', { name: /Sí, cerrar/ }));
@@ -129,6 +131,8 @@ describe('CerrarCajaPage', () => {
       caja_id: 7,
       operador_id: 1,
       tasa_cierre: 36.85,
+      efectivo_contado_usd: 7000,
+      efectivo_contado_ves: 258500,
     });
     expect(useSesion.getState().caja).toBeNull();
 
@@ -146,6 +150,8 @@ describe('CerrarCajaPage', () => {
     const user = userEvent.setup();
     renderPagina();
     const tasaInput = await screen.findByLabelText(/Tasa de cierre/);
+    await user.type(screen.getByLabelText(/Efectivo contado US/), '70');
+    await user.type(screen.getByLabelText(/Efectivo contado Bs/), '2585');
     await user.clear(tasaInput);
     await user.type(tasaInput, '0');
     expect(screen.getByText('Tasa inválida')).toBeInTheDocument();
@@ -163,6 +169,8 @@ describe('CerrarCajaPage', () => {
     expect(screen.getAllByText('$70.00').length).toBeGreaterThan(0);
     expect(screen.getByText(/Cuaderno Carta × 5/)).toBeInTheDocument();
 
+    await user.type(screen.getByLabelText(/Efectivo contado US/), '70');
+    await user.type(screen.getByLabelText(/Efectivo contado Bs/), '2585');
     await user.click(screen.getByRole('button', { name: /Cerrar caja/ }));
     await user.click(screen.getByRole('button', { name: /Sí, cerrar/ }));
 

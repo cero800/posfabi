@@ -178,10 +178,11 @@ function desglosePagos(db: DatabaseSync, cajaId: number): CierreCajaPago[] {
  * caja del día siguiente. Es lo que pide la operación real: el arqueo se firma
  * de noche y el papel queda a mano por si hay que volver a mirarlo.
  *
- * El efectivo real NO se digita: se reconcilia en persona, contando la gaveta
- * junto al cajero. Por eso al guardar se asume `efectivo_final = esperado` y
- * `diferencia = 0`; la diferencia real la anota el administrador a mano si hace
- * falta. Automatizarlo exigiría un sensor de peso en la caja, que no es el caso.
+ * El efectivo real SÍ se digita: el cajero cuenta la gaveta y la diferencia
+ * contra lo esperado queda escrita. Es lo que convierte el cierre en un arqueo
+ * y no en un recibo de la suma de las ventas: un faltante de veinte dólares es
+ * invisible si el sistema se cierra «cuadrado» por construcción, y es
+ * exactamente el número que hay que vigilar.
  */
 export function cerrarCaja(db: DatabaseSync, input: CajaCerrarInput): CierreDia {
   const actual = cajaAbierta(db);
@@ -197,6 +198,8 @@ export function cerrarCaja(db: DatabaseSync, input: CajaCerrarInput): CierreDia 
     throw validacion('Solo el operador que abrió la caja puede cerrarla');
   }
   const tasaCierre = validarTasaCambio(input.tasa_cierre);
+  const contadoUsd = redondearCent(input.efectivo_contado_usd, 'efectivo contado en US$');
+  const contadoVes = redondearCent(input.efectivo_contado_ves, 'efectivo contado en Bs');
 
   // El resumen del día trae ventas y devoluciones ya consultadas; no se
   // reconsultan, porque leerlas dos veces podría dar dos cifras distintas si
@@ -241,6 +244,11 @@ export function cerrarCaja(db: DatabaseSync, input: CajaCerrarInput): CierreDia 
   const esperadoUsd = inicialUsd + ventasEfectivo.usd + abonosEfectivo.usd;
   const esperadoVes = inicialVes + ventasEfectivo.ves + abonosEfectivo.ves;
 
+  // La diferencia es lo que el cajero contó menos lo que el sistema esperaba.
+  // Puede ser negativa (faltante) o positiva (sobrante); se guarda con signo.
+  const diferenciaUsd = contadoUsd - esperadoUsd;
+  const diferenciaVes = contadoVes - esperadoVes;
+
   const pagos = desglosePagos(db, actual.id);
 
   ejecutar(
@@ -252,17 +260,19 @@ export function cerrarCaja(db: DatabaseSync, input: CajaCerrarInput): CierreDia 
             efectivo_final_ves    = ?,
             efectivo_esperado_usd = ?,
             efectivo_esperado_ves = ?,
-            diferencia_usd        = 0,
-            diferencia_ves        = 0,
+            diferencia_usd        = ?,
+            diferencia_ves        = ?,
             tasa_cierre           = ?,
             estado                = 'revisada'
       WHERE id = ?`,
     ventasEfectivo.usd,
     ventasEfectivo.ves,
+    contadoUsd,
+    contadoVes,
     esperadoUsd,
     esperadoVes,
-    esperadoUsd,
-    esperadoVes,
+    diferenciaUsd,
+    diferenciaVes,
     tasaCierre,
     actual.id,
   );
@@ -293,6 +303,10 @@ export function cerrarCaja(db: DatabaseSync, input: CajaCerrarInput): CierreDia 
     abonos_efectivo_ves: abonosEfectivo.ves,
     efectivo_esperado_usd: esperadoUsd,
     efectivo_esperado_ves: esperadoVes,
+    efectivo_final_usd: contadoUsd,
+    efectivo_final_ves: contadoVes,
+    diferencia_usd: diferenciaUsd,
+    diferencia_ves: diferenciaVes,
     pagos,
     ventas,
     abonos,
@@ -393,6 +407,10 @@ export function obtenerCierre(db: DatabaseSync, cajaId: number): CierreDia {
     abonos_efectivo_ves: caja.efectivo_esperado_ves - caja.efectivo_inicial_ves - caja.efectivo_ventas_ves,
     efectivo_esperado_usd: caja.efectivo_esperado_usd,
     efectivo_esperado_ves: caja.efectivo_esperado_ves,
+    efectivo_final_usd: caja.efectivo_final_usd,
+    efectivo_final_ves: caja.efectivo_final_ves,
+    diferencia_usd: caja.diferencia_usd,
+    diferencia_ves: caja.diferencia_ves,
     pagos,
     ventas: resumen.ventas,
     abonos,

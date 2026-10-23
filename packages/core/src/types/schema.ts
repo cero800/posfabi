@@ -542,6 +542,17 @@ export interface CajaCerrarInput {
   caja_id: number;
   operador_id: number;
   tasa_cierre: number;
+  /**
+   * Efectivo que el cajero contó con la mano, en céntimos de cada moneda.
+   *
+   * Es la mitad que hace del cierre un arqueo de verdad: lo que hay en la
+   * gaveta lo dice quien la cuenta, no la suma de las ventas. La diferencia
+   * contra lo esperado es lo que delata un faltante o un sobrante, y sin este
+   * número nunca podía haber diferencia: el sistema se cerraba «cuadrado» todas
+   * las noches por construcción.
+   */
+  efectivo_contado_usd: number;
+  efectivo_contado_ves: number;
 }
 
 /** Desglose por método de pago y moneda al cerrar el turno. */
@@ -783,6 +794,15 @@ export interface CierreDia {
   abonos_efectivo_ves: number;
   efectivo_esperado_usd: number;
   efectivo_esperado_ves: number;
+  /** Lo que el cajero contó en la gaveta al cerrar, por moneda. */
+  efectivo_final_usd: number;
+  efectivo_final_ves: number;
+  /**
+   * `contado − esperado`, por moneda. Negativa es faltante, positiva sobrante.
+   * Cero es la gaveta cuadrada. Es el número que se mira de noche.
+   */
+  diferencia_usd: number;
+  diferencia_ves: number;
   /** Desglose por método de pago y moneda. */
   pagos: CierreCajaPago[];
   ventas: ResumenDiaVenta[];
