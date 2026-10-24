@@ -32,7 +32,7 @@
 | Pieza         | Tecnología                                                          |
 | ------------- | ------------------------------------------------------------------- |
 | Escritorio    | Tauri 2 · React 18 · TypeScript · Vite · Tailwind CSS               |
-| Back end      | TypeScript en Node · `node:sqlite` (`DatabaseSync`) · 62 procedimientos |
+| Back end      | TypeScript en Node · `node:sqlite` (`DatabaseSync`) · 64 procedimientos |
 | Transporte    | JSON-RPC 2.0 sobre stdio (NDJSON) · modo `--http --port` opcional   |
 | Empaquetado   | Node SEA → sidecar `binaries/tienda-db` (`externalBin` de Tauri)    |
 | Base de datos | SQLite, esquema versionado v1, 16 tablas                            |
@@ -67,7 +67,7 @@ posfabi/
 │   │   │   ├── main.ts            # CLI: stdio (JSON-RPC) o --http
 │   │   │   ├── rpc.ts             # despachador JSON-RPC 2.0
 │   │   │   ├── schema.ts          # esquema SQL v1 (16 tablas)
-│   │   │   ├── procedimientos.ts  # registro de los 62 procedimientos
+│   │   │   ├── procedimientos.ts  # registro de los 64 procedimientos |
 │   │   │   ├── ventas.ts          # venta atómica y devoluciones
 │   │   │   ├── pagos.ts           # pagos, abonos y crédito
 │   │   │   ├── caja.ts            # arqueo de turno por moneda
@@ -136,7 +136,7 @@ pnpm dev:desktop        # vite solo
 ## Tests y calidad
 
 ```bash
-pnpm test               # 612 en packages/db + 334 en packages/desktop
+pnpm test               # 641 en packages/db + 334 en packages/desktop |
 pnpm typecheck          # core + db + desktop
 pnpm --filter @tienda/desktop lint
 
