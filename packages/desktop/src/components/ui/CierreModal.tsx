@@ -198,6 +198,47 @@ export function CierreModal({ cierre, onClose }: Props) {
               </div>
             </div>
 
+            <div className="border-t border-dashed border-gray-400 py-2">
+              <p className="mb-1 text-[11px] uppercase text-gray-500">Arqueo de efectivo</p>
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-[11px] uppercase text-gray-500">
+                    <th className="py-1 text-left">Moneda</th>
+                    <th className="py-1 text-right">Esperado</th>
+                    <th className="py-1 text-right">Contado</th>
+                    <th className="py-1 text-right">Diferencia</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b border-gray-100">
+                    <td className="py-1">US$</td>
+                    <td className="py-1 text-right">{formatUsdCents(cierre.efectivo_esperado_usd)}</td>
+                    <td className="py-1 text-right">{formatUsdCents(cierre.efectivo_final_usd)}</td>
+                    <td
+                      className={`py-1 text-right ${cierre.diferencia_usd !== 0 ? 'font-semibold text-red-600' : ''}`}
+                    >
+                      {formatUsdCents(cierre.diferencia_usd)}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="py-1">Bs</td>
+                    <td className="py-1 text-right">{formatVesCents(cierre.efectivo_esperado_ves)}</td>
+                    <td className="py-1 text-right">{formatVesCents(cierre.efectivo_final_ves)}</td>
+                    <td
+                      className={`py-1 text-right ${cierre.diferencia_ves !== 0 ? 'font-semibold text-red-600' : ''}`}
+                    >
+                      {formatVesCents(cierre.diferencia_ves)}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              {(cierre.diferencia_usd !== 0 || cierre.diferencia_ves !== 0) && (
+                <p className="mt-1 text-[11px] text-gray-600">
+                  Hay diferencia entre lo esperado y lo contado. Revisa el efectivo en caja.
+                </p>
+              )}
+            </div>
+
             <div className="border-t border-gray-900 pt-2">
               <div className="flex justify-between text-base font-bold">
                 <span>Total del día</span>

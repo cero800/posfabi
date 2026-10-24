@@ -63,13 +63,20 @@ export default function CerrarCajaPage() {
   const contadoUsdValido = contadoUsd.trim() !== '' && Number.isFinite(contadoUsdNum) && contadoUsdNum >= 0;
   const contadoVesValido = contadoVes.trim() !== '' && Number.isFinite(contadoVesNum) && contadoVesNum >= 0;
 
-  const ventasEfectivoUsd = resumen?.ventas.reduce((s, v) => s + (resumen ? 0 : 0), 0) ?? 0;
-  // Esperado calculado como en el backend: inicial + ventas efectivo + abonos efectivo.
-  // Para mostrar la diferencia en vivo usamos el resumen disponible.
-  const esperadoUsdCents = caja ? caja.efectivo_inicial_usd + (resumen ? resumen.ventas.filter(() => false).reduce(() => 0, 0) : 0) : 0;
-  // Más simple: pedirle al usuario que cuente y confiar en el backend para el cálculo exacto;
-  // mostrar solo diferencia si ambos campos están llenos.
-  const diffUsd = contadoUsdValido ? contadoUsdNum - 0 : null;
+  // Esperado en vivo, con la misma fórmula del backend: inicial + todo el
+  // efectivo cobrado (ventas y abonos) − egresos. `pagos_efectivo_*` del
+  // resumen suma justamente esos dos orígenes por moneda. Sirve para que el
+  // cajero vea contra qué está contando antes de firmar, no para reemplazar el
+  // cálculo del cierre: el número que queda escrito lo recalcula `cerrarCaja`.
+  const esperadoUsdCents = caja
+    ? caja.efectivo_inicial_usd + (resumen?.pagos_efectivo_usd ?? 0) - caja.efectivo_egresos_usd
+    : 0;
+  const esperadoVesCents = caja
+    ? caja.efectivo_inicial_ves + (resumen?.pagos_efectivo_ves ?? 0) - caja.efectivo_egresos_ves
+    : 0;
+  const diferenciaUsd = contadoUsdValido ? contadoUsdNum - esperadoUsdCents : null;
+  const diferenciaVes = contadoVesValido ? contadoVesNum - esperadoVesCents : null;
+
   const puedeCerrar = tasaValida && caja != null && contadoUsdValido && contadoVesValido;
 
   const cerrar = async () => {
@@ -245,8 +252,50 @@ export default function CerrarCajaPage() {
                     error={!contadoVesValido && contadoVes.trim() !== '' ? 'Monto inválido' : undefined}
                   />
                 </div>
+                <div className="mt-3 grid grid-cols-3 gap-2 rounded-lg bg-muted p-3 text-sm">
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Esperado</p>
+                    <p className="font-semibold">{formatUsdCents(esperadoUsdCents)}</p>
+                    <p className="font-semibold">{formatVesCents(esperadoVesCents)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Contado</p>
+                    <p className="font-semibold">
+                      {contadoUsdValido ? formatUsdCents(contadoUsdNum) : '—'}
+                    </p>
+                    <p className="font-semibold">
+                      {contadoVesValido ? formatVesCents(contadoVesNum) : '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Diferencia</p>
+                    <p
+                      className={
+                        diferenciaUsd == null
+                          ? 'font-semibold text-muted-foreground'
+                          : diferenciaUsd === 0
+                            ? 'font-semibold text-success'
+                            : 'font-semibold text-destructive'
+                      }
+                    >
+                      {diferenciaUsd == null ? '—' : formatUsdCents(diferenciaUsd)}
+                    </p>
+                    <p
+                      className={
+                        diferenciaVes == null
+                          ? 'font-semibold text-muted-foreground'
+                          : diferenciaVes === 0
+                            ? 'font-semibold text-success'
+                            : 'font-semibold text-destructive'
+                      }
+                    >
+                      {diferenciaVes == null ? '—' : formatVesCents(diferenciaVes)}
+                    </p>
+                  </div>
+                </div>
                 <p className="mt-2 text-xs text-muted-foreground">
-                  Cuenta billetes y monedas en cada moneda por separado. La diferencia contra lo esperado quedará en el comprobante.
+                  Cuenta billetes y monedas en cada moneda por separado. Un faltante (negativo) o un
+                  sobrante (positivo) queda escrito en el comprobante.
                 </p>
               </div>
               <Input
