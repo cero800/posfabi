@@ -30,7 +30,7 @@ jobs:
 
       # 24 y no menor: el backend usa `node:sqlite`, que sin bandera
       # experimental solo existe a partir de Node 24.
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: pnpm
