@@ -273,6 +273,9 @@ export const PROCEDIMIENTOS: Readonly<Record<string, Procedimiento>> = {
   listar_cajas: ({ db }, a) => listarCajas(db, a.enteroOpc('limite') ?? 60),
   obtener_caja: ({ db }, a) => obtenerCaja(db, a.entero('id')),
   obtener_cierre: ({ db }, a) => obtenerCierre(db, a.entero('caja_id', 'cajaId', 'id')),
+  obtenerCierre: ({ db }, a) => obtenerCierre(db, a.entero('caja_id', 'cajaId', 'id')),
+  'obtener cierre': ({ db }, a) => obtenerCierre(db, a.entero('caja_id', 'cajaId', 'id')),
+  'obtener-cierre': ({ db }, a) => obtenerCierre(db, a.entero('caja_id', 'cajaId', 'id')),
 
   //---------------------------------------------------------- reporte y config
   resumen_dia: ({ db }, a) => resumenDia(db, a.textoOpc('fecha')),

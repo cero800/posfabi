@@ -291,7 +291,23 @@ export async function atender(
       throw validacion('La petición no dice qué procedure pide (`method`)');
     }
 
-    const procedimiento = registro.get(crudo.method);
+    const method = String(crudo.method).trim();
+    let procedimiento = registro.get(method);
+    if (procedimiento === undefined) {
+      const normalizados = [
+        method.replace(/\s+/g, '_'),
+        method.replace(/-/g, '_'),
+        method.replace(/_/g, ' '),
+        method.replace(/_/g, '-'),
+        method.toLowerCase(),
+        method.toLowerCase().replace(/\s+/g, '_'),
+        method.toLowerCase().replace(/-/g, '_'),
+      ];
+      for (const candidato of normalizados) {
+        procedimiento = registro.get(candidato);
+        if (procedimiento !== undefined) break;
+      }
+    }
     if (procedimiento === undefined) {
       throw conCodigo(
         CODIGO_ERROR.metodo_desconocido,
