@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect } from 'react';
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { RequiereCaja, RequiereRol, RequiereSesion } from './components/guards';
 import Shell from './components/Shell';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -22,13 +22,23 @@ const ConfiguracionPage = lazy(() => import('./pages/ConfiguracionPage'));
 
 export default function App() {
   useEffect(() => {
-    trazar('app', `montaje, path=${location.pathname}`);
-    void useSesion.getState().refrescar().then(() => trazar('app', 'refrescar listo'));
+    try {
+      trazar('app', `montaje, path=${window.location.hash || window.location.pathname}`);
+    } catch {
+      // ignorar
+    }
+    void useSesion.getState().refrescar().then(() => {
+      try {
+        trazar('app', 'refrescar listo');
+      } catch {
+        // ignorar
+      }
+    });
   }, []);
 
   return (
     <ErrorBoundary>
-      <BrowserRouter>
+      <HashRouter>
         <Suspense fallback={<PageLoader label="Cargando…" />}>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
@@ -58,7 +68,7 @@ export default function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>
-      </BrowserRouter>
+      </HashRouter>
       <OverlayErrores />
     </ErrorBoundary>
   );

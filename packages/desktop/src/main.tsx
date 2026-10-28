@@ -5,13 +5,26 @@ import { iniciarRegistroErrores } from './services/logging';
 import { iniciarTema } from './lib/tema';
 import './index.css';
 
-iniciarRegistroErrores();
+try {
+  iniciarRegistroErrores();
+} catch {
+  // ignorar errores de registro en arranque
+}
 // `public/theme.js` ya aplicó el tema antes del primer pintado; esto es la red de
 // seguridad para cuando ese script no pudo leer `localStorage`.
-iniciarTema();
+try {
+  iniciarTema();
+} catch {
+  // ignorar errores de tema en arranque
+}
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
+const root = document.getElementById('root');
+if (root) {
+  ReactDOM.createRoot(root).render(
+    <React.StrictMode>
+      <App />
+    </React.StrictMode>
+  );
+} else {
+  document.body.innerHTML = '<div style="padding:20px;font-family:sans-serif">Error: no se encontró el elemento root</div>';
+}
