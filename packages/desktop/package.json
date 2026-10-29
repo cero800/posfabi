@@ -21,7 +21,7 @@
     "@tienda/core": "workspace:*",
     "exceljs": "^4.4.0",
     "jspdf": "^2.5.1",
-    "lucide-react": "^0.300.0",
+    "lucide-react": "^1.61.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-router-dom": "^7.18.3",
