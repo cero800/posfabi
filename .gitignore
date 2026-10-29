@@ -19,3 +19,4 @@ packages/db/sea-prep.blob
 *.log
 .DS_Store
 *.local
+.vercel
