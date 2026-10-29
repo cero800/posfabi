@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "buildCommand": "pnpm build:core && pnpm --filter @tienda/desktop build",
+  "buildCommand": "pnpm --filter @tienda/core build && pnpm --filter @tienda/desktop build",
   "outputDirectory": "packages/desktop/dist",
   "framework": "vite",
   "rewrites": [
