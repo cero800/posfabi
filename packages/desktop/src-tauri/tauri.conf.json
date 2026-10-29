@@ -5,7 +5,7 @@
   "identifier": "com.tienda.pos",
   "build": {
     "beforeDevCommand": "pnpm --filter @tienda/desktop dev",
-    "devUrl": "http://localhost:3000",
+    "devUrl": "http://localhost:3001",
     "beforeBuildCommand": "pnpm --filter @tienda/desktop build",
     "frontendDist": "../dist"
   },
@@ -22,7 +22,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src ipc: http://ipc.localhost http://tauri.localhost ws://tauri.localhost http://localhost:3000 ws://localhost:3000"
+      "csp": "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src ipc: http://ipc.localhost http://tauri.localhost ws://tauri.localhost http://localhost:3000 ws://localhost:3000 http://localhost:3001 ws://localhost:3001"
     }
   },
   "bundle": {
