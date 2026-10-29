@@ -1,7 +1,7 @@
 {
   "version": 2,
   "buildCommand": "pnpm --filter @tienda/core build && pnpm --filter @tienda/desktop build",
-  "outputDirectory": "packages/desktop/dist",
+  "outputDirectory": "dist",
   "rewrites": [
     { "source": "/api/rpc", "destination": "/api/rpc" },
     { "source": "/(.*)", "destination": "/packages/desktop/dist/index.html" }
